@@ -81,7 +81,16 @@ jobs:
 
   goreleaser:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
+    # Only run the privileged, full-history checkout of a computed ref from a
+    # trusted trigger. This workflow is reusable, so CodeQL can't see the caller's
+    # trigger and assumes a privileged fork-PR context; the guard makes the
+    # trusted-context assumption explicit and enforced (defense in depth against a
+    # consumer wiring this to pull_request_target). This is a positive allowlist,
+    # not a denylist of fork-triggerable events: a new event type GitHub may add
+    # later fails closed (the job is skipped) until it is vetted and added here.
+    if: >-
+      needs.release-please.outputs.release_created &&
+      contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
     runs-on: ubuntu-latest
     permissions:
       # upload assets and publish the draft release
