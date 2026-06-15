@@ -1,0 +1,60 @@
+# This repo's own release. Release-please watches main and keeps a release PR
+# current from the Conventional Commit history; when that PR merges it cuts the
+# GitHub release and vX.Y.Z tag. The publish job then moves the floating major
+# tag (v1, v2, ...) that consumers of these reusable workflows reference.
+#
+# This is bespoke rather than the reusable release-*.yaml: a workflow library has
+# nothing to build (no npm dist/, no Go binary), so it uses release-type "simple"
+# and only needs the major-tag move.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# granted per job
+permissions: {}
+
+concurrency:
+  group: release
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      # create github release and associated tag
+      contents: write
+      # create release pull request labels through the issues api
+      issues: write
+      # create the release pull request
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
+      sha: ${{ steps.release-please.outputs.sha }}
+    steps:
+      # Manifest mode (release-please-config.json + .release-please-manifest.json)
+      # with release-type "simple": the 0.0.0 manifest anchor + the initial feat
+      # commit cut v0.1.0.
+      - name: Create release pull request
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release-please
+
+  publish:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    permissions:
+      # move the floating major tag
+      contents: write
+    steps:
+      - name: Move floating major tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          SHA: ${{ needs.release-please.outputs.sha }}
+        run: |
+          set -eu
+          MAJOR="${TAG%%.*}"
+          gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/$MAJOR" -X PATCH -f sha="$SHA" -F force=true ||
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$MAJOR" -f sha="$SHA"

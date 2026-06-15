@@ -1,0 +1,59 @@
+# Reusable CodeQL security analysis for Node repos. Scans the repository's GitHub
+# Actions workflows and its JavaScript/TypeScript (the action source). Both are
+# analysed build-free (build-mode: none).
+#
+# A repo with a committed dist/ should pass a config-file that excludes it (its
+# sources are analysed via src/; copy examples/codeql-config.yaml).
+#
+# Runs via workflow_call from a thin caller (examples/codeql-node.yaml) that owns
+# the push/pull_request/schedule triggers and grants the analyze permissions.
+name: CodeQL analysis
+
+on:
+  workflow_call:
+    inputs:
+      config-file:
+        description:
+          Path to a CodeQL config file (e.g. ./.github/codeql/codeql-config.yaml). Empty uses CodeQL defaults.
+        required: false
+        default: ""
+        type: string
+
+# granted per job
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # upload analysis results to code scanning
+      security-events: write
+      # fetch internal or private CodeQL packs
+      packages: read
+      # only required for workflows in private repositories
+      actions: read
+      # check out the repository
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, javascript-typescript]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          languages: ${{ matrix.language }}
+          # both actions and javascript-typescript analyse build-free
+          build-mode: none
+          # empty string falls back to CodeQL's default config (no config file)
+          config-file: ${{ inputs.config-file }}
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          category: "/language:${{ matrix.language }}"

@@ -1,0 +1,33 @@
+# Caller workflow — copy to `.github/workflows/merge.yaml` in a consuming repo.
+#
+# This is the only per-repo boilerplate. It owns the trigger; the first-pass
+# gate and all authoritative checks happen in the reusable workflow.
+#
+# Trigger: a maintainer comments `/merge` on the PR. issue_comment runs in the
+# base-repo context, so secrets are available even for fork PRs.
+#
+# Prerequisites (one-time, org-wide — see bitwise-media-group/ff-merge):
+#   - org variable FF_MERGE_CLIENT_ID and org secret FF_MERGE_PRIVATE_KEY
+#   - the "FF Merge" App installed on this repo and in the ruleset bypass list
+#
+# Pin @v1 to a release tag or full commit SHA — see README "Pinning".
+
+name: Fast-forward merge
+
+on:
+  issue_comment:
+    types: [created]
+
+# the App token does the privileged work; the job's GITHUB_TOKEN needs nothing
+permissions: {}
+
+jobs:
+  fast-forward:
+    # The reusable workflow gates on a /merge comment from an org member and
+    # re-verifies write access authoritatively, so no per-repo gate is needed.
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@v1
+    with:
+      pr-number: ${{ github.event.issue.number }}
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}

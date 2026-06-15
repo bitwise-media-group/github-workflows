@@ -1,0 +1,22 @@
+# Caller workflow — copy to `.github/workflows/ci.yaml` in a GitHub Actions repo.
+# It owns the push/pull_request triggers; all the work lives in the reusable
+# ci-actions workflow. The repo must provide the npm scripts check / typecheck /
+# test:coverage / build, a committed dist/, and a .node-version file.
+#
+# Pin @v1 to a release tag or full commit SHA — see README "Pinning".
+
+name: Continuous integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["main", "releases/*"]
+
+# the reusable workflow's jobs only need contents:read; grant just that ceiling
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: bitwise-media-group/github-workflows/.github/workflows/ci-actions.yaml@v1

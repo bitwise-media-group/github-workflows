@@ -1,0 +1,79 @@
+# Reusable CodeQL security analysis for Go repos. Scans the repository's GitHub
+# Actions workflows (build-free) and its Go module. Go does not support
+# build-mode: none, so it uses autobuild: setup-go installs the toolchain
+# (matched to go.mod) and CodeQL observes a real `go build` to extract every
+# source file the module compiles. The Go version comes from go.mod, never the
+# workflow.
+#
+# Runs via workflow_call from a thin caller (examples/codeql-go.yaml) that owns
+# the push/pull_request/schedule triggers and grants the analyze permissions.
+name: CodeQL analysis
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: File the Go version is read from (passed to setup-go for the go autobuild).
+        required: false
+        default: go.mod
+        type: string
+      config-file:
+        description:
+          Path to a CodeQL config file (e.g. ./.github/codeql/codeql-config.yaml). Empty uses CodeQL defaults.
+        required: false
+        default: ""
+        type: string
+
+# granted per job
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # upload analysis results to code scanning
+      security-events: write
+      # fetch internal or private CodeQL packs
+      packages: read
+      # only required for workflows in private repositories
+      actions: read
+      # check out the repository
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Interpreted target: workflow YAML needs no build.
+          - language: actions
+            build-mode: none
+          # Compiled target: autobuild observes a real `go build` so every
+          # source file the module compiles is extracted.
+          - language: go
+            build-mode: autobuild
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      # Match the module's Go toolchain so autobuild compiles the code the way
+      # the project does.
+      - if: matrix.language == 'go'
+        name: Setup go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+          cache: true
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # empty string falls back to CodeQL's default config (no config file)
+          config-file: ${{ inputs.config-file }}
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          category: "/language:${{ matrix.language }}"

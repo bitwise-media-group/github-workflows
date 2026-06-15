@@ -1,0 +1,38 @@
+# This repo's own CI. The workflow library is GitHub Actions YAML + Markdown only
+# — nothing to typecheck, test, or build — so it can't use the reusable
+# ci-actions.yaml (which runs npm check/typecheck/test:coverage/build and gates on
+# dist/ reproducibility). Instead it runs the prose toolchain directly: prettier
+# formatting and markdownlint. This is bespoke for the same reason self-release is.
+name: Continuous integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["main", "releases/*"]
+
+# granted per job
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      # check out the repository
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install packages
+        run: npm ci
+      - name: Check formatting
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint

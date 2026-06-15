@@ -1,0 +1,21 @@
+# Keep the SHA-pinned actions in the reusable workflows fresh. This repo holds
+# only workflow YAML (no npm or Go modules), so github-actions is the only
+# ecosystem.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - actions/*
+      github:
+        patterns:
+          - github/*
+      bitwise-media-group:
+        patterns:
+          - bitwise-media-group/*

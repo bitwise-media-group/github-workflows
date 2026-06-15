@@ -1,0 +1,27 @@
+{
+  "name": "setup-evolve",
+  "version": "0.1.0",
+  "description": "GitHub Action to install the evolve CLI with supply-chain verification",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "format": "prettier --write \"**/*.md\"",
+    "format:check": "prettier --check \"**/*.md\"",
+    "lint": "markdownlint-cli2",
+    "lint:fix": "markdownlint-cli2 --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bitwise-media-group/github-workflows.git"
+  },
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "markdownlint-cli2": "0.22.1",
+    "prettier": "3.8.4"
+  }
+}
