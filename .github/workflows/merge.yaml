@@ -69,7 +69,7 @@ jobs:
           private-key: ${{ secrets.app-private-key }}
 
       - name: Fast-forward merge
-        uses: bitwise-media-group/ff-merge@v1
+        uses: bitwise-media-group/ff-merge@182b1c83d954664a09eca1aeee252873504a329a # v1.0.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
