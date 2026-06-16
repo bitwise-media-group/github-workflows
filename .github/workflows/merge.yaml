@@ -45,6 +45,7 @@ permissions: {}
 concurrency:
   group: ff-merge-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   fast-forward:

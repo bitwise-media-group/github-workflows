@@ -91,6 +91,7 @@ permissions: {}
 concurrency:
   group: ff-merge-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   arm:
@@ -99,12 +100,11 @@ jobs:
     # triage+ requirement for labelling plus the approval gate below, and is scoped
     # to same-repo PRs (a labelled fork PR has no secrets, so it arms by comment).
     if: >-
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
-      github.event.comment.body == inputs.command &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request' && github.event.action == 'labeled' &&
-      github.event.label.name == inputs.label &&
-      github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.body ==
+      inputs.command && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+      github.event.comment.author_association)) || (github.event_name == 'pull_request' && github.event.action ==
+      'labeled' && github.event.label.name == inputs.label && github.event.pull_request.head.repo.full_name ==
+      github.repository)
     runs-on: ubuntu-latest
     # No GITHUB_TOKEN permissions: the App token (minted below, pull-requests:write)
     # applies the label, posts the confirmation, and does the ref move — so callers
