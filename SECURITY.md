@@ -3,8 +3,8 @@
 ## Reporting a vulnerability
 
 Please report vulnerabilities privately via
-[GitHub Security Advisories](https://github.com/bitwise-media-group/github-workflows/security/advisories/new). Do not open
-public issues for security reports.
+[GitHub Security Advisories](https://github.com/bitwise-media-group/github-workflows/security/advisories/new). Do not
+open public issues for security reports.
 
 ## Threat model (summary)
 
@@ -29,8 +29,8 @@ They defend against:
   inlining them into the script, avoiding expression-injection.
 
 Out of scope: a compromise of the GitHub Actions runner executing a workflow; a compromise of a consumer repository's
-own secrets, PATs, or branch protections; and the trust placed in first-party `bitwise-media-group` actions referenced by these
-workflows (e.g. `ff-merge`), whose own repositories are the trust anchor.
+own secrets, PATs, or branch protections; and the trust placed in first-party `bitwise-media-group` actions referenced
+by these workflows (e.g. `ff-merge`), whose own repositories are the trust anchor.
 
 ## Code scanning triage
 
