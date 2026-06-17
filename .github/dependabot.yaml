@@ -10,6 +10,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    commit-message:
+      prefix: deps
+      prefix-development: deps
+      include: scope
     cooldown:
       default-days: 7
       # our own actions ship straight through — no cooldown wait
