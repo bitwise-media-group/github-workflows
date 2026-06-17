@@ -15,12 +15,9 @@ action is pinned to a full commit SHA; Dependabot keeps the pins fresh.
 
 | Workflow                                         | Platform | What it does                                                                                                     |
 | ------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| [`ci-actions.yaml`](#ci-actionsyaml)             | node     | lint/typecheck/test+coverage/build, dist-reproducibility gate, Codecov upload                                    |
-| [`ci-go.yaml`](#ci-goyaml)                       | go       | build/vet/test+coverage/vuln + prose lint, Codecov upload                                                        |
-| [`codeql-node.yaml`](#codeql-nodeyaml)           | node     | CodeQL over actions + javascript-typescript (build-free)                                                         |
-| [`codeql-go.yaml`](#codeql-goyaml)               | go       | CodeQL over actions + go (go via autobuild)                                                                      |
-| [`release-actions.yaml`](#release-actionsyaml)   | node     | release-please → rebuild `dist/`, verify, move floating major tag                                                |
-| [`release-go.yaml`](#release-goyaml)             | go       | release-please (two-pass) → GoReleaser (archives, checksums, SBOMs, cosign, optional Homebrew, SLSA attestation) |
+| [`ci.yaml`](#ciyaml)                             | any      | canonical Makefile gates (lint/build/test) per job, toolchains by detection, Codecov upload                      |
+| [`codeql.yaml`](#codeqlyaml)                     | any      | CodeQL over actions + go (autobuild) + javascript-typescript, language matrix by detection                       |
+| [`release.yaml`](#releaseyaml)                   | any      | release-please (two-pass) → GoReleaser (if `.goreleaser.yaml`) or `dist/` rebuild + verify; optional vanity tags |
 | [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward `/merge` (mints an App token, runs the `ff-merge` action)                      |
 | [`auto-merge.yaml`](#auto-mergeyaml)             | any      | arm a PR (`/auto-merge` comment or `auto-merge` label); fast-forwards it automatically once approved + green     |
 | [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                              |
@@ -30,37 +27,16 @@ Each workflow below lists its inputs, secrets, and the permission ceiling the **
 workflow's jobs cannot exceed the permissions of the job that calls them. The snippet is the minimal caller; follow the
 link beneath it for the fully-commented version.
 
-### `ci-actions.yaml`
+### `ci.yaml`
 
-_GitHub Actions repos (Node/TypeScript)._ Lint, typecheck, test with coverage, and build; gates that `dist/` is
-reproducible; uploads coverage to Codecov.
-
-- **Inputs:** `node-version-file` — optional, default `.node-version`.
-- **Secrets:** none.
-- **Permissions (caller grants):** `contents: read`.
-
-```yaml
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: ["main", "releases/*"]
-permissions:
-  contents: read
-jobs:
-  ci:
-    uses: bitwise-media-group/github-workflows/.github/workflows/ci-actions.yaml@v1
-```
-
-Full example: [`examples/ci-actions.yaml`](examples/ci-actions.yaml).
-
-### `ci-go.yaml`
-
-_Go repos._ Build, vet, test with coverage, vuln scan, plus markdown/prettier prose lint; uploads coverage to Codecov. A
-caller may add product-specific jobs (e.g. `integration`, `e2e`) alongside the `ci` job.
+_Any repo._ Runs the canonical Makefile gates — `lint`, `build`, `test` — as one parallel job each, sets up only the
+toolchains the repo has (a root `go.mod` → Go, `package.json` → Node), and uploads coverage to Codecov from a job
+isolated from PR-built code. An opt-in `e2e` job runs `make e2e`. A caller may add product-specific jobs (e.g.
+`integration`) alongside the `ci` job.
 
 - **Inputs:** `go-version-file` (default `go.mod`), `node-version-file` (default `.node-version`),
-  `cache-dependency-path` (default `go.sum`; newline-separated lockfiles to key the module cache on).
+  `cache-dependency-path` (default `go.sum`; newline-separated lockfiles to key the module cache on), `e2e` (default
+  `false`).
 - **Secrets:** none.
 - **Permissions (caller grants):** `contents: read`.
 
@@ -74,17 +50,20 @@ permissions:
   contents: read
 jobs:
   ci:
-    uses: bitwise-media-group/github-workflows/.github/workflows/ci-go.yaml@v1
+    uses: bitwise-media-group/github-workflows/.github/workflows/ci.yaml@v2
 ```
 
-Full example: [`examples/ci-go.yaml`](examples/ci-go.yaml).
+Full example: [`examples/ci.yaml`](examples/ci.yaml).
 
-### `codeql-node.yaml`
+### `codeql.yaml`
 
-_Node repos._ CodeQL analysis over the `actions` and `javascript-typescript` languages (build-free).
+_Any repo._ CodeQL analysis whose language matrix is detected at the repo root: `actions` (build-free) always, plus `go`
+(via `autobuild`; `setup-go` matches `go-version-file`) when a root `go.mod` exists and `javascript-typescript`
+(build-free) when `package.json` exists.
 
-- **Inputs:** `config-file` — optional, default none; pass `./.github/codeql/codeql-config.yaml` (copy
-  [`examples/codeql-config.yaml`](examples/codeql-config.yaml)) to exclude a bundled `dist/`.
+- **Inputs:** `go-version-file` (default `go.mod`), `config-file` (optional, default none; pass
+  `./.github/codeql/codeql-config.yaml`, copy [`examples/codeql-config.yaml`](examples/codeql-config.yaml), to exclude a
+  bundled `dist/`).
 - **Secrets:** none.
 - **Permissions (caller grants):** `security-events: write`, `packages: read`, `actions: read`, `contents: read`.
 
@@ -103,76 +82,25 @@ permissions:
   contents: read
 jobs:
   analyze:
-    uses: bitwise-media-group/github-workflows/.github/workflows/codeql-node.yaml@v1
-    with:
-      config-file: ./.github/codeql/codeql-config.yaml # if you bundle dist/
+    uses: bitwise-media-group/github-workflows/.github/workflows/codeql.yaml@v2
 ```
 
-Full example: [`examples/codeql-node.yaml`](examples/codeql-node.yaml).
+Full example: [`examples/codeql.yaml`](examples/codeql.yaml).
 
-### `codeql-go.yaml`
+### `release.yaml`
 
-_Go repos._ CodeQL analysis over `actions` (build-free) and `go` (via `autobuild`; `setup-go` matches
-`go-version-file`).
+_Any repo._ Runs release-please (two-pass), then branches by detection: a repo with a `.goreleaser.yaml` runs GoReleaser
+(archives, checksums, SBOMs, cosign signatures, optional Homebrew cask, SLSA attestation); every other repo rebuilds via
+`make build` and verifies a committed `dist/`. With `vanity-tags: true` it also moves the floating major and minor tags
+(`v1` and `v1.1`).
 
-- **Inputs:** `go-version-file` (default `go.mod`), `config-file` (optional, default none).
-- **Secrets:** none.
-- **Permissions (caller grants):** `security-events: write`, `packages: read`, `actions: read`, `contents: read`.
-
-```yaml
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: ["main", "releases/*"]
-  schedule:
-    - cron: "28 20 * * 4"
-permissions:
-  security-events: write
-  packages: read
-  actions: read
-  contents: read
-jobs:
-  analyze:
-    uses: bitwise-media-group/github-workflows/.github/workflows/codeql-go.yaml@v1
-```
-
-Full example: [`examples/codeql-go.yaml`](examples/codeql-go.yaml).
-
-### `release-actions.yaml`
-
-_GitHub Actions repos (Node/TypeScript)._ Runs release-please; on a release, rebuilds and verifies `dist/` and moves the
-floating major tag.
-
-- **Inputs:** `node-version-file` — optional, default `.node-version`.
-- **Secrets:** none.
-- **Permissions (caller grants):** `contents: write`, `issues: write`, `pull-requests: write`.
-
-```yaml
-on:
-  push:
-    branches: [main]
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-jobs:
-  release:
-    uses: bitwise-media-group/github-workflows/.github/workflows/release-actions.yaml@v1
-```
-
-Full example: [`examples/release-actions.yaml`](examples/release-actions.yaml).
-
-### `release-go.yaml`
-
-_Go repos._ Runs release-please (two-pass), then GoReleaser (archives, checksums, SBOMs, cosign signatures, optional
-Homebrew cask, SLSA attestation).
-
-- **Inputs:** `go-version-file` — optional, default `go.mod`.
+- **Inputs:** `go-version-file` (default `go.mod`), `node-version-file` (default `.node-version`), `vanity-tags`
+  (default `false`; move the floating `v1` / `v1.1` tags — set it for Actions/reusable repos whose consumers pin `@v1`).
 - **Secrets:** `homebrew-tap-token` — optional; only needed if `.goreleaser.yaml` publishes a Homebrew cask to another
   repo (`secrets.HOMEBREW_TAP_GITHUB_TOKEN`).
-- **Permissions (caller grants):** `contents: write`, `issues: write`, `pull-requests: write`, `id-token: write`,
-  `attestations: write`, `artifact-metadata: write`.
+- **Permissions (caller grants):** `contents: write`, `issues: write`, `pull-requests: write`; plus `id-token: write`,
+  `attestations: write`, `artifact-metadata: write` for the GoReleaser path only (drop them if you have no
+  `.goreleaser.yaml`).
 
 ```yaml
 on:
@@ -182,17 +110,19 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
-  id-token: write
-  attestations: write
-  artifact-metadata: write
+  id-token: write # GoReleaser path only
+  attestations: write # GoReleaser path only
+  artifact-metadata: write # GoReleaser path only
 jobs:
   release:
-    uses: bitwise-media-group/github-workflows/.github/workflows/release-go.yaml@v1
+    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@v2
+    with:
+      vanity-tags: true # for Actions/reusable repos pinned @v1
     secrets:
       homebrew-tap-token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }} # optional
 ```
 
-Full example: [`examples/release-go.yaml`](examples/release-go.yaml).
+Full example: [`examples/release.yaml`](examples/release.yaml).
 
 ### `merge.yaml`
 
@@ -336,28 +266,32 @@ Full example: [`examples/dependabot-merge.yaml`](examples/dependabot-merge.yaml)
 
 ## Consumer contracts
 
-The language-specific workflows assume a small contract so they can stay free of per-repo configuration:
+The reusable workflows stay free of per-repo configuration by assuming a small contract. The **Makefile is the language
+boundary** — every repo provides the same canonical targets and the workflows just run `make <target>`, setting up
+toolchains from the files at the repo root:
 
-- **`ci-actions.yaml` / `release-actions.yaml`** — npm scripts `check`, `typecheck`, `test:coverage` (emitting
-  `coverage/cobertura-coverage.xml` and `test-report.junit.xml`), `build`, and `all`; a committed `dist/`; a
-  `.node-version` file; `release-please-config.json` + `.release-please-manifest.json`.
-- **`ci-go.yaml` / `release-go.yaml`** — a Makefile with targets `build`, `vet`, `test-coverage` (emitting
-  `cobertura-coverage.xml` at the repo root), `vuln`, `lint-md`, `fmt-check`; `go.mod`; a `package.json` for the
-  node-based doc linters; a `.goreleaser.yaml`; `release-please-config.json` (`release-type: go`, `draft: true`) +
-  `.release-please-manifest.json`.
-- **`codeql-node.yaml`** — a repo with a bundled `dist/` should pass `config-file: ./.github/codeql/codeql-config.yaml`
-  (copy [`examples/codeql-config.yaml`](examples/codeql-config.yaml)) to exclude it.
-- **`codeql-go.yaml`** — `go` is analysed with `autobuild`; the workflow runs `setup-go` from `go-version-file` (default
-  `go.mod`). CodeQL has no build-free mode for Go, so the toolchain must be available.
+- **Makefile targets** — `lint` (all check-mode static analysis: `prettier --check`, markdownlint, and for Go `go vet` /
+  `govulncheck`), `build`, `test` (emitting `coverage/cobertura-coverage.xml`, optionally `coverage/junit.xml`), and
+  `e2e`. Stub any that don't apply as a no-op (`build: ; @:`) so `make <target>` always succeeds; coverage is optional.
+- **Toolchain detection** — `setup-go` runs only when a **root `go.mod`** exists; `setup-node` (and `npm ci`) only when
+  `package.json` exists. A tools-only `go.work` + `tools/go.mod` (for `go tool addlicense`) is universal dev tooling, so
+  it is **not** a Go-product signal — only a root `go.mod` is.
+- **CodeQL** — scans `actions` always, `go` (autobuild, `setup-go` from `go-version-file`) when a root `go.mod` exists,
+  and `javascript-typescript` when `package.json` exists. A repo with a bundled `dist/` should pass
+  `config-file: ./.github/codeql/codeql-config.yaml` (copy [`examples/codeql-config.yaml`](examples/codeql-config.yaml))
+  to exclude it.
+- **Release** — `release-please-config.json` + `.release-please-manifest.json`; a `.goreleaser.yaml`
+  (`release-type: go`, `draft: true`) selects the GoReleaser path, otherwise the publish path rebuilds via `make build`
+  and verifies a committed `dist/`. Set `vanity-tags: true` to move the floating `v1` / `v1.1` tags.
 
 A caller may mix a reusable-workflow job with normal jobs — e.g. a Go CLI keeps its product-specific `integration` /
-`e2e` jobs in the same `ci.yaml` that calls `ci-go.yaml`.
+`e2e` jobs in the same `ci.yaml` that calls the reusable `ci.yaml`.
 
 ## Pinning
 
-The examples reference `@v1`, the floating major tag, which moves to each release in the v1.x line. Pin to a release tag
-(`@v1.2.3`) or a full commit SHA for stricter supply-chain guarantees; Dependabot can bump either. Avoid `@main` except
-for short-lived testing.
+The examples reference `@v2`, the floating major tag, which moves to each release in the v2.x line (a matching minor tag
+`@v2.1` moves too). Pin to a release tag (`@v2.1.0`) or a full commit SHA for stricter supply-chain guarantees;
+Dependabot can bump either. Avoid `@main` except for short-lived testing.
 
 ## Fast-forward merge: org setup
 
@@ -373,14 +307,17 @@ for short-lived testing.
 
 ## Testing changes
 
-This repo is YAML + Markdown only, so it can't run the built-Action `ci-actions` / `release-actions` reusables against
-itself. It dogfoods what it can — its own prose CI (`self-ci.yaml`: prettier + markdownlint), `codeql` (over its own
-workflows, via `self-codeql.yaml`), the `/merge` and `/auto-merge` flows (`self-merge.yaml` / `self-auto-merge.yaml` /
-`self-merge-notice.yaml`), and Dependabot auto-merge (`self-dependabot-merge.yaml`, which keeps the reusable workflows'
-action pins fresh). Validate a change to a language-specific workflow by temporarily pointing a real consumer's caller
-at a feature branch or SHA (`@your-branch`) and opening a PR there.
+This repo dogfoods its own reusable workflows by local path: `self-ci.yaml` calls `ci.yaml` (which detects node only —
+there is no root `go.mod` — and runs the canonical `make` gates) and `self-release.yaml` calls `release.yaml` (the
+publish path, moving the vanity tags). `self-codeql.yaml` stays a bespoke `actions`-only scan: the library has no
+compilable Go and no JS/TS product source, so the reusable `codeql.yaml` would add an empty `javascript-typescript` leg
+from its tooling-only `package.json`. The `/merge` and `/auto-merge` flows (`self-merge.yaml` / `self-auto-merge.yaml` /
+`self-merge-notice.yaml`) and Dependabot auto-merge (`self-dependabot-merge.yaml`, which keeps the reusable workflows'
+action pins fresh) dogfood the rest. Validate a change to a reusable workflow by temporarily pointing a real consumer's
+caller at a feature branch or SHA (`@your-branch`) and opening a PR there.
 
 ## Releasing this repo
 
-`self-release.yaml` runs release-please (`release-type: simple`) on pushes to `main`; merging the release PR cuts
-`vX.Y.Z` and moves the floating major tag. Consumers pin to those tags.
+`self-release.yaml` calls the reusable `release.yaml` (`release-type: simple`, `vanity-tags: true`) on pushes to `main`;
+merging the release PR cuts `vX.Y.Z` and moves the floating major and minor tags (`v2`, `v2.1`). Consumers pin to those
+tags.

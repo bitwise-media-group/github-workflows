@@ -1,0 +1,197 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Reusable CI for any repo. Runs the canonical Makefile gates -- lint, build, test
+# -- as one parallel job per target, then a Codecov upload isolated from
+# PR-supplied code. Language toolchains are set up only when their marker file is
+# present at the repo root: setup-go when go.mod (a Go product) or go.work (the
+# tools-only addlicense module that `make lint` runs) exists, setup-node when
+# package.json exists (Go repos still use node for the doc linters). The repo's
+# Makefile is the language boundary; this workflow never hard-codes go or npm.
+#
+# The consuming repo must provide a Makefile with the canonical targets:
+#   lint  -- all check-mode static analysis (prettier --check, markdownlint, go vet, govulncheck, ...)
+#   build -- compile / build dist/
+#   test  -- tests with coverage, emitting coverage/cobertura-coverage.xml (and optionally coverage/junit.xml)
+#   e2e   -- end-to-end tests (only run when the caller sets e2e: true)
+# Stub any not-applicable target as a no-op (e.g. `build: ; @:`) so `make <target>`
+# always succeeds. Coverage is optional -- a repo that emits none still passes.
+#
+# Runs via workflow_call from a thin caller (examples/ci.yaml) that owns the
+# push/pull_request triggers.
+name: Continuous integration
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: File the Go version is read from (passed to setup-go).
+        required: false
+        default: go.mod
+        type: string
+      node-version-file:
+        description: File the Node version is read from (passed to setup-node).
+        required: false
+        default: .node-version
+        type: string
+      cache-dependency-path:
+        description: One or more go.sum lockfiles to key the module cache on (newline-separated).
+        required: false
+        default: go.sum
+        type: string
+      e2e:
+        description: Run the `make e2e` job. Off by default; e2e often needs services or secrets.
+        required: false
+        default: false
+        type: boolean
+
+# granted per job
+permissions: {}
+
+jobs:
+  # One parallel job per canonical target. Each detects and sets up only the
+  # toolchains the repo actually has, then runs `make <target>`.
+  make:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [lint, build, test]
+    runs-on: ubuntu-latest
+    permissions:
+      # check out the repository
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      # Two mutually-exclusive Go setups (hashFiles is '' when nothing matches; a
+      # bare filename matches the repo root only). A root go.mod marks a repo that
+      # builds Go -- set up from it, cached on go.sum. Otherwise a go.work with no
+      # root go.mod is the universal tools-only module (go.work + tools/go.mod for
+      # `go tool addlicense`, which `make lint` runs) -- set the toolchain up from it.
+      - name: Setup go
+        if: hashFiles('go.mod')
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+          cache: true
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+      - name: Setup go (tooling)
+        if: ${{ !hashFiles('go.mod') && hashFiles('go.work') }}
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.work
+          cache: true
+          cache-dependency-path: tools/go.sum
+
+      # node is used by Go repos too, for the markdown/prettier doc linters.
+      - name: Setup node
+        if: hashFiles('package.json')
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: npm
+
+      - name: Install node packages
+        if: hashFiles('package.json')
+        run: npm ci
+
+      - name: Run ${{ matrix.target }}
+        run: make ${{ matrix.target }}
+
+      # Coverage is optional: ignore (not error) so prose/no-test repos pass, and
+      # the isolated coverage job below skips the upload when nothing was produced.
+      - name: Upload coverage artifact
+        if: matrix.target == 'test'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-report
+          path: coverage/cobertura-coverage.xml
+          if-no-files-found: ignore
+
+      - name: Upload test results artifact
+        if: matrix.target == 'test'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-results
+          path: coverage/junit.xml
+          if-no-files-found: ignore
+
+  # Upload to Codecov from a clean checkout that never ran the build, keeping the
+  # Codecov token isolated from PR-supplied code. Tolerant of repos that emit no
+  # coverage: the downloads may find nothing and each upload is gated on the file.
+  coverage:
+    needs: make
+    if: ${{ !cancelled() && needs.make.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      # check out the repository
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Download coverage report
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: coverage-report
+        continue-on-error: true
+
+      - name: Upload coverage report
+        if: hashFiles('cobertura-coverage.xml')
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: cobertura-coverage.xml
+          disable_search: true
+          fail_ci_if_error: true
+
+      - name: Download test results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: test-results
+        continue-on-error: true
+
+      - name: Upload test results
+        if: hashFiles('junit.xml')
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        with:
+          # the artifact holds only this one file; don't let the action walk the tree
+          files: junit.xml
+          disable_search: true
+          fail_ci_if_error: true
+
+  # Opt-in end-to-end tests. Kept separate from the always-on gates because e2e
+  # commonly needs services or secrets and shouldn't run on every PR by default.
+  e2e:
+    if: ${{ inputs.e2e }}
+    runs-on: ubuntu-latest
+    permissions:
+      # check out the repository
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup go
+        if: hashFiles('go.mod')
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+          cache: true
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+      - name: Setup node
+        if: hashFiles('package.json')
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: npm
+
+      - name: Install node packages
+        if: hashFiles('package.json')
+        run: npm ci
+
+      - name: Run e2e
+        run: make e2e

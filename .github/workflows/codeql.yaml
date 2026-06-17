@@ -1,15 +1,20 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# Reusable CodeQL security analysis for Go repos. Scans the repository's GitHub
-# Actions workflows (build-free) and its Go module. Go does not support
-# build-mode: none, so it uses autobuild: setup-go installs the toolchain
-# (matched to go.mod) and CodeQL observes a real `go build` to extract every
-# source file the module compiles. The Go version comes from go.mod, never the
+# Reusable CodeQL security analysis for any repo. A prep job detects which
+# languages are present at the repo root and builds the analysis matrix; the
+# analyze job runs it. The repo's GitHub Actions workflows (`actions`, build-free)
+# are always scanned; `go` (autobuild) is added when a root go.mod exists and
+# `javascript-typescript` (build-free) when package.json exists. A polyglot repo
+# gets all three. (go.work / tools/go.mod -- the addlicense tooling every repo
+# carries -- is not a Go-product signal, so only a root go.mod adds the go leg.)
+#
+# Go has no build-free mode, so autobuild observes a real `go build`; setup-go
+# installs the toolchain matched to go-version-file (default go.mod), never the
 # workflow.
 #
-# Runs via workflow_call from a thin caller (examples/codeql-go.yaml) that owns
-# the push/pull_request/schedule triggers and grants the analyze permissions.
+# Runs via workflow_call from a thin caller (examples/codeql.yaml) that owns the
+# push/pull_request/schedule triggers and grants the analyze permissions.
 name: CodeQL analysis
 
 on:
@@ -31,7 +36,35 @@ on:
 permissions: {}
 
 jobs:
+  # Build the language matrix from what's at the repo root. hashFiles is evaluated
+  # after checkout (a job-level `if:` could not see the workspace), so the JSON is
+  # assembled in this step. `actions` is always scanned.
+  prep:
+    runs-on: ubuntu-latest
+    permissions:
+      # check out the repository
+      contents: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Detect languages
+        id: detect
+        run: |
+          set -eu
+          langs='{"language":"actions","build-mode":"none"}'
+          if [ -n "${{ hashFiles('go.mod') }}" ]; then
+            langs="$langs,{\"language\":\"go\",\"build-mode\":\"autobuild\"}"
+          fi
+          if [ -n "${{ hashFiles('package.json') }}" ]; then
+            langs="$langs,{\"language\":\"javascript-typescript\",\"build-mode\":\"none\"}"
+          fi
+          echo "matrix={\"include\":[$langs]}" >> "$GITHUB_OUTPUT"
+
   analyze:
+    needs: prep
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
@@ -46,15 +79,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          # Interpreted target: workflow YAML needs no build.
-          - language: actions
-            build-mode: none
-          # Compiled target: autobuild observes a real `go build` so every
-          # source file the module compiles is extracted.
-          - language: go
-            build-mode: autobuild
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
