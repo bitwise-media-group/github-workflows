@@ -1,9 +1,10 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# Keep the SHA-pinned actions in the reusable workflows fresh. This repo holds
-# only workflow YAML (no npm or Go modules), so github-actions is the only
-# ecosystem.
+# Keep the SHA-pinned actions in the reusable workflows fresh, and the pinned npm
+# dev-tooling (prettier, markdownlint-cli2) that `make fmt`/`make lint` run up to date.
+# github-actions bumps reach consumers, so they ship as `deps` and cut a release; the npm
+# dev-tools are local-only, so they ship as `build` (release-please-ignored) and never do.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -12,7 +13,7 @@ updates:
       interval: daily
     commit-message:
       prefix: deps
-      prefix-development: deps
+      prefix-development: build
       include: scope
     cooldown:
       default-days: 7
@@ -39,3 +40,20 @@ updates:
       goreleaser:
         patterns:
           - goreleaser/*
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      # local dev tooling only — `build` is release-please-ignored so these never cut a
+      # library release (see the commit-type rules in AGENTS.md)
+      prefix: build
+      prefix-development: build
+      include: scope
+    cooldown:
+      default-days: 7
+    groups:
+      dev-tooling:
+        patterns:
+          - "*"
