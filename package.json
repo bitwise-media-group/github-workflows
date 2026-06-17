@@ -2,11 +2,10 @@
   "name": "github-workflows",
   "private": true,
   "scripts": {
-    "format": "prettier --write \"**/*.md\"",
-    "format:check": "prettier --check \"**/*.md\"",
+    "fmt": "prettier --write \"**/*.md\"",
+    "fmt:check": "prettier --check \"**/*.md\"",
     "lint": "markdownlint-cli2",
-    "lint:fix": "markdownlint-cli2 --fix",
-    "pr": "npm run format && npm run lint:fix && npm run lint"
+    "lint:fix": "markdownlint-cli2 --fix"
   },
   "repository": {
     "type": "git",

@@ -1,11 +1,11 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# This repo's own CI. The workflow library is GitHub Actions YAML + Markdown only
-# — nothing to typecheck, test, or build — so it can't use the reusable
-# ci-actions.yaml (which runs npm check/typecheck/test:coverage/build and gates on
-# dist/ reproducibility). Instead it runs the prose toolchain directly: prettier
-# formatting and markdownlint. This is bespoke for the same reason self-release is.
+# This repo's own CI, dogfooding the reusable ci workflow by local path (so it
+# always runs the current definition, not a release pin). The library has no root
+# go.mod and no committed dist/ -- just a package.json for the prose toolchain --
+# so the reusable workflow sets up node only and runs the canonical Makefile gates:
+# lint (prettier --check + markdownlint), with build and test as no-ops here.
 name: Continuous integration
 
 on:
@@ -14,28 +14,10 @@ on:
   pull_request:
     branches: ["main", "releases/*"]
 
-# granted per job
-permissions: {}
+# the reusable workflow's jobs only need contents:read; grant just that ceiling
+permissions:
+  contents: read
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    permissions:
-      # check out the repository
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: .node-version
-          cache: npm
-
-      - name: Install packages
-        run: npm ci
-      - name: Check formatting
-        run: npm run format:check
-      - name: Lint
-        run: npm run lint
+  ci:
+    uses: ./.github/workflows/ci.yaml
