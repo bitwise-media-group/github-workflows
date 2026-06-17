@@ -1,37 +1,46 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# This repo's own caller for the reusable merge workflow — the workflow library
-# dogfoods its own fast-forward merge. A maintainer comments `/merge` on an
-# approved, green PR and the base branch is fast-forwarded to the PR head,
-# preserving its signature.
+# This repo's own caller for the reusable merge workflow — the library dogfoods both
+# fast-forward flows from one caller: manual `/merge` and set-and-forget auto-merge.
+# A maintainer comments `/merge` to merge an approved, green PR now, or arms it
+# (`/auto-merge` comment or the `auto-merge` label) to merge automatically once
+# approved and green — preserving its signature either way.
 #
-# Unlike examples/merge.yaml — which consuming repos copy and pin to @v1 — this
-# calls the reusable workflow by local path (`./.github/workflows/...`), so it
-# always exercises this repo's current definition rather than a release.
+# Unlike examples/merge.yaml — which consuming repos copy and pin to @v2 — this calls
+# the reusable workflow by local path (`./.github/workflows/...`), so it always
+# exercises this repo's current definition rather than a release.
 #
-# Trigger: issue_comment runs in the base-repo context, so the App credentials
-# are available even for fork PRs. The reusable workflow owns the first-pass
-# author_association gate and re-verifies write access authoritatively.
+# All four triggers are routed by github.event_name inside merge.yaml. issue_comment
+# runs in the base-repo context (so `/merge` and `/auto-merge` work even for fork
+# PRs); the label-arm and review paths are same-repo only. The workflow_run list
+# names every workflow that must pass — "Continuous integration" (self-ci.yaml) and
+# "CodeQL analysis" (self-codeql.yaml); whichever finishes last triggers the attempt
+# and ff-merge re-verifies all checks.
 #
 # Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
-# variable + FF_MERGE_PRIVATE_KEY secret, and the "FF Merge" App in main's
-# ruleset bypass list.
-
+# variable + FF_MERGE_PRIVATE_KEY secret, and the "FF Merge" App in main's ruleset
+# bypass list.
 name: Merge
 
 on:
   issue_comment:
     types: [created]
+  pull_request:
+    types: [labeled]
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    workflows: ["Continuous integration", "CodeQL analysis"]
+    types: [completed]
 
-# the App token does the privileged work; the job's GITHUB_TOKEN needs nothing
+# the App token does the privileged work; the caller grants nothing
 permissions: {}
 
 jobs:
-  fast-forward:
+  merge:
     uses: ./.github/workflows/merge.yaml
     with:
-      pr-number: ${{ github.event.issue.number }}
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
     secrets:
       app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}

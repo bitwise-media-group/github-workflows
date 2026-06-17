@@ -18,8 +18,7 @@ action is pinned to a full commit SHA; Dependabot keeps the pins fresh.
 | [`ci.yaml`](#ciyaml)                             | any      | canonical Makefile gates (lint/build/test) per job, toolchains by detection, Codecov upload                      |
 | [`codeql.yaml`](#codeqlyaml)                     | any      | CodeQL over actions + go (autobuild) + javascript-typescript, language matrix by detection                       |
 | [`release.yaml`](#releaseyaml)                   | any      | release-please (two-pass) → GoReleaser (if `.goreleaser.yaml`) or `dist/` rebuild + verify; optional vanity tags |
-| [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward `/merge` (mints an App token, runs the `ff-merge` action)                      |
-| [`auto-merge.yaml`](#auto-mergeyaml)             | any      | arm a PR (`/auto-merge` comment or `auto-merge` label); fast-forwards it automatically once approved + green     |
+| [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward merge — `/merge` now, or `/auto-merge` (comment/label) when approved + green   |
 | [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                              |
 | [`dependabot-merge.yaml`](#dependabot-mergeyaml) | any      | auto-approves Dependabot minor/patch PRs and fast-forwards them once CI is green                                 |
 
@@ -126,57 +125,27 @@ Full example: [`examples/release.yaml`](examples/release.yaml).
 
 ### `merge.yaml`
 
-_Any repo._ Signature-preserving fast-forward `/merge`: mints a short-lived App token and runs the `ff-merge` action.
-Gates on a `/merge` comment from an org member and re-verifies write access authoritatively (see
-[org setup](#fast-forward-merge-org-setup)).
+_Any repo._ Signature-preserving fast-forward merge — the manual `/merge` and the set-and-forget auto-merge in one
+workflow. `/merge` merges an approved, green PR now; arming auto-merge (a `/auto-merge` comment or the `auto-merge`
+label) fast-forwards it automatically the moment it is approved and every required check is green. Both run the same
+`ff-merge` action with a short-lived App token (commit objects untouched, so signatures survive), and `ff-merge`
+re-verifies write access, approval, all checks, and a genuine fast-forward before moving the ref. There is no GitHub
+event for "all of a repo's own Actions checks finished" (GitHub does not fire `check_suite` for `GITHUB_TOKEN` runs), so
+auto-merge observes completion via `workflow_run(completed)` listing every required workflow. Requires branch protection
+that requires PR review. See [org setup](#fast-forward-merge-org-setup).
 
-- **Inputs:** `pr-number` (required), `app-client-id` (required; `vars.FF_MERGE_CLIENT_ID`), `require-approval` (default
-  `true`), `maintainer-only` (default `true`).
+- **Inputs:** `app-client-id` (required; `vars.FF_MERGE_CLIENT_ID`), `merge-command` (default `/merge`), `arm-command`
+  (default `/auto-merge`), `label` (default `auto-merge`), `require-approval` (default `true`), `maintainer-only`
+  (default `true`).
 - **Secrets:** `app-private-key` — required (`secrets.FF_MERGE_PRIVATE_KEY`).
-- **Permissions (caller grants):** none — the App token does the privileged work, so the caller job sets
-  `permissions: {}`.
-
-```yaml
-on:
-  issue_comment:
-    types: [created]
-permissions: {}
-jobs:
-  fast-forward:
-    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@v1
-    with:
-      pr-number: ${{ github.event.issue.number }}
-      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
-    secrets:
-      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
-```
-
-Full example: [`examples/merge.yaml`](examples/merge.yaml).
-
-### `auto-merge.yaml`
-
-_Any repo._ The set-and-forget companion to [`merge.yaml`](#mergeyaml). A maintainer arms a PR once — comments
-`/auto-merge` or adds the `auto-merge` label — and the PR is fast-forwarded automatically the moment it is approved and
-every required check is green, via the same signature-preserving `ff-merge` action. `/merge` merges now; `/auto-merge`
-merges when ready. Remove the label to cancel. There is no GitHub event for "all of a repo's own Actions checks
-finished" (GitHub does not fire `check_suite` for runs started by `GITHUB_TOKEN`), so completion is observed via
-`workflow_run(completed)` listing every required workflow — whichever finishes last triggers the attempt, and `ff-merge`
-re-verifies that all checks pass, the PR is approved, and the move is a genuine fast-forward before touching the ref.
-Requires branch protection that requires PR review — the same assumption as the `/merge` flow.
-
-- **Inputs:** `app-client-id` (required; `vars.FF_MERGE_CLIENT_ID`), `label` (optional, default `auto-merge`), `command`
-  (optional, default `/auto-merge`).
-- **Secrets:** `app-private-key` — required (`secrets.FF_MERGE_PRIVATE_KEY`).
-- **Permissions (caller grants):** none — the App token does the privileged work, so the caller job sets
-  `permissions: {}`.
-- **Triggers (the caller owns all four):** `issue_comment` (`created`) and `pull_request` (`labeled`) to arm;
-  `pull_request_review` (`submitted`) and `workflow_run` (`completed`) listing your CI workflow name(s) to merge once
-  the PR is approved and green. None of the triggers run PR code.
-- **Fork PRs:** only `issue_comment` and `workflow_run` get base-context secrets on a fork, so the `pull_request`
-  (labeled) and `pull_request_review` jobs are gated to same-repo PRs. A fork PR is **armed with `/auto-merge`** and
-  merges via the comment's immediate attempt or `workflow_run` once CI is green. The one thing forks can't do is
-  auto-merge on a _bare approval_ (no fork-safe event fires on a review) — re-comment `/auto-merge`, or just use
-  `/merge`, which works on forks. Same-repo PRs get all four paths including merge-on-approval.
+- **Permissions (caller grants):** none — the App token does the privileged work, so the caller sets `permissions: {}`.
+- **Triggers (the caller owns all four):** `issue_comment` (`created`) drives `/merge` and arms `/auto-merge`;
+  `pull_request` (`labeled`) arms via label; `pull_request_review` (`submitted`) and `workflow_run` (`completed`,
+  listing your CI workflow name(s)) attempt the auto-merge once approved and green. A `/merge`-only repo can trigger
+  just `issue_comment`. None of the triggers run PR code, and none use `pull_request_target`.
+- **Fork PRs:** only `issue_comment` and `workflow_run` carry base-context secrets on a fork, so the label-arm and
+  review jobs are gated to same-repo PRs. Arm a fork PR with `/auto-merge` (it merges via that attempt or
+  `workflow_run`), or just use `/merge`.
 
 ```yaml
 on:
@@ -191,15 +160,15 @@ on:
     types: [completed]
 permissions: {}
 jobs:
-  auto-merge:
-    uses: bitwise-media-group/github-workflows/.github/workflows/auto-merge.yaml@v1
+  merge:
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@v2
     with:
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
     secrets:
       app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
 ```
 
-Full example: [`examples/auto-merge.yaml`](examples/auto-merge.yaml).
+Full example: [`examples/merge.yaml`](examples/merge.yaml).
 
 ### `merge-notice.yaml`
 
@@ -218,7 +187,7 @@ permissions:
   pull-requests: write
 jobs:
   notice:
-    uses: bitwise-media-group/github-workflows/.github/workflows/merge-notice.yaml@v1
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge-notice.yaml@v2
     with:
       pr-number: ${{ github.event.pull_request.number }}
 ```
@@ -255,7 +224,7 @@ on:
 permissions: {}
 jobs:
   auto-merge:
-    uses: bitwise-media-group/github-workflows/.github/workflows/dependabot-merge.yaml@v1
+    uses: bitwise-media-group/github-workflows/.github/workflows/dependabot-merge.yaml@v2
     with:
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
     secrets:
@@ -295,9 +264,9 @@ Dependabot can bump either. Avoid `@main` except for short-lived testing.
 
 ## Fast-forward merge: org setup
 
-`merge.yaml` / `auto-merge.yaml` / `merge-notice.yaml` / `dependabot-merge.yaml` drive the
-`bitwise-media-group/ff-merge` action. The one-time org setup (the "FF Merge" GitHub App, its ruleset bypass, and the
-`FF_MERGE_CLIENT_ID` variable + `FF_MERGE_PRIVATE_KEY` secret) is documented in
+`merge.yaml` (the `/merge` + auto-merge flows) and `dependabot-merge.yaml` drive the `bitwise-media-group/ff-merge`
+action; `merge-notice.yaml` posts the companion convention reminder. The one-time org setup (the "FF Merge" GitHub App,
+its ruleset bypass, and the `FF_MERGE_CLIENT_ID` variable + `FF_MERGE_PRIVATE_KEY` secret) is documented in
 [`bitwise-media-group/ff-merge`](https://github.com/bitwise-media-group/ff-merge).
 
 > **Note on App input names.** This library's contract is input `app-client-id` + secret `app-private-key`, backed by
@@ -311,8 +280,8 @@ This repo dogfoods its own reusable workflows by local path: `self-ci.yaml` call
 there is no root `go.mod` — and runs the canonical `make` gates) and `self-release.yaml` calls `release.yaml` (the
 publish path, moving the vanity tags). `self-codeql.yaml` stays a bespoke `actions`-only scan: the library has no
 compilable Go and no JS/TS product source, so the reusable `codeql.yaml` would add an empty `javascript-typescript` leg
-from its tooling-only `package.json`. The `/merge` and `/auto-merge` flows (`self-merge.yaml` / `self-auto-merge.yaml` /
-`self-merge-notice.yaml`) and Dependabot auto-merge (`self-dependabot-merge.yaml`, which keeps the reusable workflows'
+from its tooling-only `package.json`. The `/merge` + auto-merge flows (`self-merge.yaml`), the merge notice
+(`self-merge-notice.yaml`), and Dependabot auto-merge (`self-dependabot-merge.yaml`, which keeps the reusable workflows'
 action pins fresh) dogfood the rest. Validate a change to a reusable workflow by temporarily pointing a real consumer's
 caller at a feature branch or SHA (`@your-branch`) and opening a PR there.
 

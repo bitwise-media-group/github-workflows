@@ -1,38 +1,75 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# Reusable fast-forward "merge". A maintainer comments `/merge`; this workflow
-# mints a short-lived GitHub App token and runs the ff-merge action, which
-# verifies write access, approval, passing checks, and a genuine fast-forward,
-# then moves the base ref to the PR head. The commit object is untouched, so the
-# original developer's signature is preserved and release-please sees each
-# Conventional Commit individually.
+# Reusable signature-preserving fast-forward merge — the manual `/merge` and the
+# set-and-forget auto-merge in one workflow. A maintainer comments `/merge` to merge
+# an approved, green PR now; or *arms* a PR once (comment `/auto-merge`, or add the
+# `auto-merge` label) and it is fast-forwarded automatically the moment it is both
+# approved and fully green. Both paths run the same `ff-merge` action, so the commit
+# objects are untouched and every original signature is preserved, and both
+# authenticate with a short-lived "FF Merge" GitHub App token.
 #
-# Runs only via workflow_call from a thin caller (examples/merge.yaml) that owns
-# just the issue_comment trigger; the first-pass gate now lives on the job below.
-# The action re-verifies everything security-relevant, so a misconfigured caller
-# cannot move a branch on its own.
-# See README.md for the one-time org setup (App, ruleset bypass, org var/secret).
-name: Fast-forward merge
+# `/merge` merges now; `/auto-merge` merges when ready. The label is the load-bearing
+# auto-merge state — a `/auto-merge` comment is ephemeral, so it simply applies the
+# label and everything downstream keys off it (remove the label to cancel).
+#
+# There is no single GitHub event for "all of a repo's own Actions checks are done"
+# (GitHub does not fire check_suite/check_run for runs started by GITHUB_TOKEN), so
+# auto-merge observes completion via workflow_run(completed) listing every required
+# workflow: whichever finishes last triggers a merge attempt, and `ff-merge`
+# re-verifies that ALL checks are green, the PR is approved, the move is a genuine
+# fast-forward, and the arming label is present (require-label) before moving the ref.
+#
+# Four events, handled by four mutually-exclusive jobs (github.event is the caller's
+# triggering event inside a reusable workflow, so each job gates on its own event and
+# at most the relevant ones run per invocation). No pull_request_target is used or
+# needed here — that lives only in the separate dependabot-merge.yaml (Dependabot
+# approval needs base-repo secrets) and merge-notice.yaml (the notice reaches fork
+# PRs). Keeping them separate keeps this workflow off the elevated trigger entirely.
+#
+#   - issue_comment(created) `/merge`                       -> manual
+#   - issue_comment(created) `/auto-merge`, or
+#     pull_request(labeled)                                 -> arm
+#   - workflow_run(completed)                               -> merge-on-checks
+#   - pull_request_review(submitted, approved)              -> merge-on-review  [same-repo]
+#
+# Authorization: the `/merge` and `/auto-merge` comments are gated to org members
+# (author_association); adding a label already requires triage+ on GitHub. Neither is
+# treated as sufficient to merge on the automatic paths — `ff-merge` runs with
+# require-approval:true, so a qualifying approval plus green checks is always required.
+# Requires branch protection that requires PR review. See README.md for the one-time
+# org setup (App, ruleset bypass, org var/secret).
+name: Merge
 
 on:
   workflow_call:
     inputs:
-      pr-number:
-        description: The pull request number to merge
-        required: true
-        type: number
       app-client-id:
         description: The client id of the github app used to perform the merge (vars.FF_MERGE_CLIENT_ID)
         required: true
         type: string
+      merge-command:
+        description: The issue-comment body that triggers an immediate `/merge`.
+        required: false
+        default: /merge
+        type: string
+      arm-command:
+        description: The issue-comment body that arms auto-merge.
+        required: false
+        default: /auto-merge
+        type: string
+      label:
+        description: The label that arms auto-merge on a pull request.
+        required: false
+        default: auto-merge
+        type: string
       require-approval:
-        description: A value indicating whether or not to require the pull request to be approved by a maintainer
+        description: For `/merge` — whether to require the pull request to be approved by a maintainer.
         required: false
         default: true
         type: boolean
       maintainer-only:
-        description: A value indicating whether or not to require the /merge comment author to be a maintainer
+        description: For `/merge` — whether to require the `/merge` comment author to be a maintainer.
         required: false
         default: true
         type: boolean
@@ -41,28 +78,25 @@ on:
         description: The private key for the github app used to perform the merge (secrets.FF_MERGE_PRIVATE_KEY)
         required: true
 
-# the action authenticates with the App token; the job github token is not used
+# every job authenticates with the App token; the job GITHUB_TOKENs are not used, so
+# callers keep permissions: {}. Ref moves are serialized per repo at the job level
+# (group ff-merge-<repo>, shared with dependabot-merge.yaml) so two merges can't race.
 permissions: {}
 
-# serialize ref moves within a repo so two concurrent /merge commands can't race
-concurrency:
-  group: ff-merge-${{ github.repository }}
-  cancel-in-progress: false
-  queue: max
-
 jobs:
-  fast-forward:
-    # Cheap first-pass gate, centralized here so callers stay thin: a /merge
-    # comment on a PR from someone in the org. A job-level `if` in a reusable
-    # workflow reads the caller's triggering event, so github.event.* refers to
-    # the original issue_comment. False short-circuits the job before any token
-    # is minted; the ff-merge action still re-verifies write access
-    # authoritatively, so this only filters noise. NB: this couples the workflow
-    # to the issue_comment trigger — callers must trigger on issue_comment.
+  manual:
+    # /merge flow: a /merge comment on a PR from someone in the org. The ff-merge
+    # action still re-verifies write access authoritatively, so this only filters
+    # noise before any token is minted.
     if: >-
-      github.event.issue.pull_request && github.event.comment.body == '/merge' &&
+      github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+      github.event.comment.body == inputs.merge-command &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
+    concurrency:
+      group: ff-merge-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
     steps:
       - name: Mint a github app installation token
         id: app
@@ -76,7 +110,190 @@ jobs:
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
-          pr-number: ${{ inputs.pr-number }}
+          # issue_comment on a PR: issue.number is the PR number.
+          pr-number: ${{ github.event.issue.number }}
           actor: ${{ github.actor }}
           require-approval: ${{ inputs.require-approval }}
           maintainer-only: ${{ inputs.maintainer-only }}
+
+  arm:
+    # A maintainer comments /auto-merge, or someone adds the auto-merge label. The
+    # comment path is gated to org members; the label path relies on GitHub's own
+    # triage+ requirement for labelling plus the approval gate below, and is scoped
+    # to same-repo PRs (a labelled fork PR has no secrets, so it arms by comment).
+    if: >-
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+      github.event.comment.body == inputs.arm-command &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      github.event.label.name == inputs.label &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ff-merge-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - name: Mint a github app installation token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Resolve the pull request number
+        id: pr
+        env:
+          # issue_comment carries issue.number; labeled carries pull_request.number.
+          # The unused one renders empty, so the first non-empty wins.
+          FROM_COMMENT: ${{ github.event.issue.number }}
+          FROM_LABEL: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          number="${FROM_COMMENT:-}"
+          [ -n "$number" ] || number="${FROM_LABEL:-}"
+          echo "number=${number}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure the auto-merge label is present
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.pr.outputs.number }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          set -euo pipefail
+          # Idempotent: a no-op when armed via the label, applies it when armed via
+          # the comment. --add-label creates the label if the repo lacks it.
+          gh pr edit "$PR" --repo "$REPO" --add-label "$LABEL"
+
+      - name: Confirm arming
+        # Only on the comment path — re-labelling shouldn't spam the thread.
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.pr.outputs.number }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            '> [!NOTE]' \
+            '> **Auto-merge armed.** Once this PR is approved and every required check' \
+            '> passes, it will be fast-forwarded into the base branch automatically,' \
+            '> preserving every commit signature.' \
+            '>' \
+            "> Remove the \`${LABEL}\` label to cancel. If the branch is not" \
+            '> fast-forwardable, rebase onto the base branch and re-sign — CI re-runs' \
+            '> and the merge retries.' \
+            | gh pr comment "$PR" --repo "$REPO" --body-file -
+
+      - name: Attempt fast-forward now (best effort)
+        # ff-merge declines if the PR isn't yet approved or any required check is
+        # pending or failing — expected while CI runs, so a decline here must not
+        # fail the run. The merge-on-checks / merge-on-review jobs retry when the
+        # state changes; an already-approved, already-green PR merges right here.
+        continue-on-error: true
+        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        with:
+          token: ${{ steps.app.outputs.token }}
+          repository: ${{ github.repository }}
+          pr-number: ${{ steps.pr.outputs.number }}
+          actor: ${{ github.actor }}
+          require-approval: true
+          maintainer-only: false
+          require-label: ${{ inputs.label }}
+
+  merge-on-checks:
+    # A required CI workflow finished green. workflow_run carries the branch, not
+    # the PR; the next step resolves the open PR for it and ff-merge's require-label
+    # enforces the arming label.
+    if: >-
+      github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ff-merge-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - name: Mint a github app installation token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Resolve the open PR for this branch
+        id: pr
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          # workflow_run carries the branch, not the PR; find its open PR. The last
+          # required workflow to finish triggers the real merge; ff-merge skips a PR
+          # that is not armed and declines if any check is still pending or failing.
+          number=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
+            --json number --jq '.[0].number // empty')
+          echo "number=${number}" >> "$GITHUB_OUTPUT"
+          if [ -z "$number" ]; then
+            echo "No open PR for ${BRANCH}; nothing to merge."
+          fi
+
+      - name: Fast-forward merge
+        # Best effort: a decline (not approved/green yet) must not fail the run; it
+        # retries when the next required workflow finishes.
+        if: steps.pr.outputs.number != ''
+        continue-on-error: true
+        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        with:
+          token: ${{ steps.app.outputs.token }}
+          repository: ${{ github.repository }}
+          pr-number: ${{ steps.pr.outputs.number }}
+          actor: ${{ github.actor }}
+          require-approval: true
+          maintainer-only: false
+          require-label: ${{ inputs.label }}
+
+  merge-on-review:
+    # An approval landed on a same-repo PR. If it was armed before review, no
+    # workflow_run fires on the approval, so this retries the merge when the review
+    # lands; ff-merge's require-label skips the PR if it is not armed.
+    #
+    # Gated to same-repo PRs: pull_request_review gets NO secrets on a fork PR (it
+    # runs in the fork's merge ref, not the base context), so the App token can't be
+    # minted there. The guard makes a fork approval skip this job cleanly instead of
+    # failing the token mint and leaving a red check that would block the merge gate.
+    # Fork PRs are merged via the /auto-merge comment (issue_comment, base context)
+    # and workflow_run instead.
+    if: >-
+      github.event_name == 'pull_request_review' && github.event.review.state == 'approved' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ff-merge-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - name: Mint a github app installation token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Fast-forward merge
+        # Best effort, like the arm attempt: a decline (e.g. CI not green yet) must
+        # not fail the run, or the red check would block ff-merge's own gate. It
+        # retries on the next workflow_run.
+        continue-on-error: true
+        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        with:
+          token: ${{ steps.app.outputs.token }}
+          repository: ${{ github.repository }}
+          pr-number: ${{ github.event.pull_request.number }}
+          actor: ${{ github.actor }}
+          require-approval: true
+          maintainer-only: false
+          require-label: ${{ inputs.label }}

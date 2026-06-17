@@ -28,7 +28,7 @@ on:
     workflows: ["Continuous integration", "CodeQL analysis"]
     types: [completed]
 
-# the App token does the privileged work; the caller grants nothing
+# the app token does the privileged work; the caller grants nothing
 permissions: {}
 
 jobs:

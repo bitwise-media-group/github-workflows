@@ -18,7 +18,7 @@
 #   - org variable FF_MERGE_CLIENT_ID and org secret FF_MERGE_PRIVATE_KEY
 #   - the "FF Merge" App installed on this repo and in the ruleset bypass list
 #
-# Pin @v1 to a release tag or full commit SHA — see README "Pinning".
+# Pin @v2 to a release tag or full commit SHA — see README "Pinning".
 name: Dependabot auto-merge
 
 # Both triggers are required. pull_request_target approves on open; workflow_run
@@ -39,7 +39,7 @@ permissions: {}
 
 jobs:
   auto-merge:
-    uses: bitwise-media-group/github-workflows/.github/workflows/dependabot-merge.yaml@v1
+    uses: bitwise-media-group/github-workflows/.github/workflows/dependabot-merge.yaml@v2
     with:
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
       # update-types: '["version-update:semver-patch", "version-update:semver-minor"]' # default
