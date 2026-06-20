@@ -19,7 +19,7 @@
 #   - the "FF Merge" App installed on this repo and in the ruleset bypass list
 #
 # Pin @v2 to a release tag or full commit SHA — see README "Pinning".
-name: Dependabot auto-merge
+name: Dependabot Auto-Merge
 
 # Both triggers are required. pull_request_target approves on open; workflow_run
 # fast-forwards once CI is green. check_suite is NOT usable here — GitHub does not

@@ -14,8 +14,8 @@
 # All four triggers are routed by github.event_name inside merge.yaml. issue_comment
 # runs in the base-repo context (so `/merge` and `/auto-merge` work even for fork
 # PRs); the label-arm and review paths are same-repo only. The workflow_run list
-# names every workflow that must pass — "Continuous integration" (self-ci.yaml) and
-# "CodeQL analysis" (self-codeql.yaml); whichever finishes last triggers the attempt
+# names every workflow that must pass — "Continuous Integration" (self-ci.yaml) and
+# "Security Analysis" (self-security.yaml); whichever finishes last triggers the attempt
 # and ff-merge re-verifies all checks.
 #
 # Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
@@ -31,7 +31,7 @@ on: # zizmor: ignore[dangerous-triggers] -- required: workflow_run gates auto-me
   pull_request_review:
     types: [submitted]
   workflow_run:
-    workflows: ["Continuous integration", "CodeQL analysis"]
+    workflows: ["Continuous Integration", "Security Analysis"]
     types: [completed]
 
 # the App token does the privileged work; the caller grants nothing

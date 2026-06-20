@@ -12,7 +12,7 @@
 #
 # Pin @v2 to a release tag or full commit SHA — see README "Pinning".
 
-name: Fast-forward merge notice
+name: Merge Notice
 
 on:
   pull_request_target:

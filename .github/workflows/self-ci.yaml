@@ -6,7 +6,7 @@
 # go.mod and no committed dist/ -- just a package.json for the prose toolchain --
 # so the reusable workflow sets up node only and runs the canonical Makefile gates:
 # lint (prettier --check + markdownlint), with build and test as no-ops here.
-name: Continuous integration
+name: Continuous Integration
 
 on:
   push:

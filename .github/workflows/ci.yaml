@@ -19,7 +19,7 @@
 #
 # Runs via workflow_call from a thin caller (examples/ci.yaml) that owns the
 # push/pull_request triggers.
-name: Continuous integration
+name: Reusable Continuous Integration
 
 on:
   workflow_call:

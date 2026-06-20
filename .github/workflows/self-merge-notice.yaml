@@ -10,7 +10,7 @@
 # reusable workflow only posts a static comment with a pull-requests:write token,
 # so the elevated context is safe. No secret needed.
 
-name: Merge notice
+name: Merge Notice
 
 on: # zizmor: ignore[dangerous-triggers] -- required: notice must reach fork PRs; only posts a static comment, no PR code is run
   pull_request_target:

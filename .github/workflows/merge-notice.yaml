@@ -14,7 +14,7 @@
 # run's GITHUB_TOKEN, scoped to pull-requests:write. No App token or secret is
 # needed — posting a comment is not a privileged operation.
 
-name: Fast-forward merge notice
+name: Reusable Merge Notice
 
 on:
   workflow_call:

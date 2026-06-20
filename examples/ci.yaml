@@ -15,7 +15,7 @@
 #
 # Pin @v2 to a release tag or full commit SHA -- see README "Pinning".
 
-name: Continuous integration
+name: Continuous Integration
 
 on:
   push:

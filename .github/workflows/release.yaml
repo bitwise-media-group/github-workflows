@@ -26,7 +26,7 @@
 #
 # Runs via workflow_call from a thin caller (examples/release.yaml) that owns the
 # push trigger and grants the release permissions.
-name: Release
+name: Reusable Release
 
 on:
   workflow_call:
@@ -55,7 +55,11 @@ on:
           needed if .goreleaser.yaml publishes a cask.
         required: false
 
-permissions: {} # granted per job
+# Granted per job below. Note for callers: GitHub validates a reusable workflow's
+# permissions as the union of every job and ignores `if:`, so a caller must grant
+# the goreleaser job's id-token/attestations/artifact-metadata even on the publish
+# path where that job is skipped -- see examples/release.yaml.
+permissions: {}
 
 # concurrent release-please runs can open duplicate release PRs; queue them.
 concurrency:
@@ -133,8 +137,7 @@ jobs:
     # not a denylist of fork-triggerable events: a new event type GitHub may add
     # later fails closed (the job is skipped) until it is vetted and added here.
     if: >-
-      needs.release-please.outputs.release_created &&
-      needs.release-please.outputs.goreleaser &&
+      needs.release-please.outputs.release_created && needs.release-please.outputs.goreleaser &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
     runs-on: ubuntu-latest
     permissions:
@@ -208,8 +211,7 @@ jobs:
     # Same trusted-trigger allowlist as the goreleaser job above (fails closed on
     # any event type not vetted here).
     if: >-
-      needs.release-please.outputs.release_created &&
-      !needs.release-please.outputs.goreleaser &&
+      needs.release-please.outputs.release_created && !needs.release-please.outputs.goreleaser &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
     runs-on: ubuntu-latest
     permissions:

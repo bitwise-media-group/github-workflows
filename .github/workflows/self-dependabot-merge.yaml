@@ -12,20 +12,20 @@
 #
 # Both triggers are required: pull_request_target to approve on open, and
 # workflow_run to fast-forward once CI finishes green. The workflow_run list names
-# every workflow that must pass — "Continuous integration" (self-ci.yaml) and
-# "CodeQL analysis" (self-codeql.yaml); whichever finishes last triggers the merge
+# every workflow that must pass — "Continuous Integration" (self-ci.yaml) and
+# "Security Analysis" (self-security.yaml); whichever finishes last triggers the merge
 # attempt, and ff-merge verifies all checks before moving the ref.
 #
 # Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
 # variable + FF_MERGE_PRIVATE_KEY secret and the "FF Merge" App in main's ruleset
 # bypass list — the same App as the /merge flow.
-name: Dependabot auto-merge
+name: Dependabot Auto-Merge
 
 on: # zizmor: ignore[dangerous-triggers] -- required: approve needs base-repo secrets; no PR code is checked out or run
   pull_request_target:
     types: [opened, reopened, synchronize]
   workflow_run:
-    workflows: ["Continuous integration", "CodeQL analysis"]
+    workflows: ["Continuous Integration", "Security Analysis"]
     types: [completed]
 
 # the app token does the privileged work; the caller grants nothing

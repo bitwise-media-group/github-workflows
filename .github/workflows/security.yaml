@@ -22,9 +22,9 @@
 # installs the toolchain matched to go-version-file (default go.mod), never the
 # workflow.
 #
-# Runs via workflow_call from a thin caller (examples/codeql.yaml) that owns the
+# Runs via workflow_call from a thin caller (examples/security.yaml) that owns the
 # push/pull_request/schedule triggers and grants the analyze permissions.
-name: CodeQL analysis
+name: Reusable Security Analysis
 
 on:
   workflow_call:
@@ -42,9 +42,9 @@ on:
         type: string
       languages:
         description:
-          Comma-separated CodeQL languages to analyse (e.g. "actions" or "actions,go"), overriding root
-          detection. Empty (default) auto-detects actions, plus go (root go.mod) and javascript-typescript
-          (package.json). Set this when detection would add an empty leg -- e.g. a tooling-only package.json.
+          Comma-separated CodeQL languages to analyse (e.g. "actions" or "actions,go"), overriding root detection. Empty
+          (default) auto-detects actions, plus go (root go.mod) and javascript-typescript (package.json). Set this when
+          detection would add an empty leg -- e.g. a tooling-only package.json.
         required: false
         default: ""
         type: string
@@ -162,5 +162,7 @@ jobs:
       # permission already granted to this job; in SARIF mode zizmor exits 0 even
       # with findings, so this step never fails the run.
       - name: Run zizmor
-        if: matrix.language == 'actions' && hashFiles('zizmor.yml', 'zizmor.yaml', '.github/zizmor.yml', '.github/zizmor.yaml') != ''
+        if:
+          matrix.language == 'actions' && hashFiles('zizmor.yml', 'zizmor.yaml', '.github/zizmor.yml',
+          '.github/zizmor.yaml') != ''
         uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6

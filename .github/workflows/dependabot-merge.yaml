@@ -37,7 +37,7 @@
 # review decision to APPROVED) — the same assumption as the `/merge` flow. See
 # README.md for the one-time org setup (App, ruleset bypass, org var/secret); it
 # is the same "FF Merge" App as merge.yaml.
-name: Dependabot auto-merge
+name: Reusable Dependabot Auto-Merge
 
 on:
   workflow_call:

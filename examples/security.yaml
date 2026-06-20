@@ -1,15 +1,15 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# Caller workflow -- copy to `.github/workflows/codeql.yaml` in any repo. It owns
-# the triggers and grants the analyze permissions; the reusable codeql workflow
+# Caller workflow -- copy to `.github/workflows/security.yaml` in any repo. It owns
+# the triggers and grants the analyze permissions; the reusable security workflow
 # detects languages at the repo root and scans actions (build-free), plus go (via
 # autobuild) when a root go.mod exists and javascript-typescript (build-free) when
 # package.json exists.
 #
 # Pin @v2 to a release tag or full commit SHA -- see README "Pinning".
 
-name: CodeQL analysis
+name: Security Analysis
 
 on:
   push:
@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   analyze:
-    uses: bitwise-media-group/github-workflows/.github/workflows/codeql.yaml@v2
+    uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@v2
     # with:
     #   go-version-file: go.mod                          # default
     #   config-file: ./.github/codeql/codeql-config.yaml # a repo with a bundled dist/ should exclude it

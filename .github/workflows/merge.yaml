@@ -39,7 +39,7 @@
 # require-approval:true, so a qualifying approval plus green checks is always required.
 # Requires branch protection that requires PR review. See README.md for the one-time
 # org setup (App, ruleset bypass, org var/secret).
-name: Merge
+name: Reusable Merge
 
 on:
   workflow_call:
@@ -89,9 +89,9 @@ jobs:
     # action still re-verifies write access authoritatively, so this only filters
     # noise before any token is minted.
     if: >-
-      github.event_name == 'issue_comment' && github.event.issue.pull_request &&
-      github.event.comment.body == inputs.merge-command &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.body ==
+      inputs.merge-command && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+      github.event.comment.author_association)
     runs-on: ubuntu-latest
     concurrency:
       group: ff-merge-${{ github.repository }}
@@ -128,12 +128,11 @@ jobs:
     # triage+ requirement for labelling plus the approval gate below, and is scoped
     # to same-repo PRs (a labelled fork PR has no secrets, so it arms by comment).
     if: >-
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
-      github.event.comment.body == inputs.arm-command &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request' && github.event.action == 'labeled' &&
-      github.event.label.name == inputs.label &&
-      github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.body ==
+      inputs.arm-command && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+      github.event.comment.author_association)) || (github.event_name == 'pull_request' && github.event.action ==
+      'labeled' && github.event.label.name == inputs.label && github.event.pull_request.head.repo.full_name ==
+      github.repository)
     runs-on: ubuntu-latest
     concurrency:
       group: ff-merge-${{ github.repository }}

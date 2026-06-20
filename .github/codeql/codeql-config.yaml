@@ -1,7 +1,7 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# CodeQL analysis configuration for this repo's own self-codeql.yaml run.
+# CodeQL analysis configuration for this repo's own self-security.yaml run.
 #
 # Security only: the security-extended suite runs the security queries (a
 # superset of the default) without the maintainability/reliability "quality"
