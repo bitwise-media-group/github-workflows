@@ -1,12 +1,13 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# This repo's own CodeQL run. It scans just the `actions` language (build-free):
-# the library is GitHub Actions YAML + Markdown, with no compilable Go and no
-# JavaScript/TypeScript product source (the package.json is prose-linting tooling
-# only). The reusable codeql workflow would add a javascript-typescript leg from
-# that package.json with nothing to analyse, so the actions-only analysis is
-# inlined here instead, mirroring codeql.yaml.
+# This repo's own CodeQL run, dogfooding the reusable codeql workflow by local path
+# (so it always runs the current definition, not a release pin). The library is
+# GitHub Actions YAML + Markdown with no compilable Go and no JavaScript/TypeScript
+# product source -- the package.json is prose-linting tooling only -- so it pins
+# `languages: actions` rather than let detection add an empty javascript-typescript
+# leg from that package.json. The actions leg also runs zizmor, gated on the root
+# zizmor.yaml shipped here.
 name: CodeQL analysis
 
 on:
@@ -17,41 +18,19 @@ on:
   schedule:
     - cron: "28 20 * * 4"
 
-# granted per job
-permissions: {}
+# ceiling for the reusable workflow's prep (contents) and analyze jobs
+permissions:
+  # upload analysis results to code scanning
+  security-events: write
+  # fetch internal or private CodeQL packs
+  packages: read
+  # only required for workflows in private repositories
+  actions: read
+  # check out the repository
+  contents: read
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
-    permissions:
-      # upload analysis results to code scanning
-      security-events: write
-      # fetch internal or private CodeQL packs
-      packages: read
-      # only required for workflows in private repositories
-      actions: read
-      # check out the repository
-      contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [actions]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false # read-only checkout; don't leave the token in .git/config
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: none
-          config-file: ./.github/codeql/codeql-config.yaml
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
-        with:
-          category: "/language:${{ matrix.language }}"
+    uses: ./.github/workflows/codeql.yaml
+    with:
+      languages: actions
