@@ -11,13 +11,27 @@ on:
   push:
     branches: [main]
 
-# release-please needs issues + pull-requests; the publish job moves the vanity
-# tags with contents:write. No .goreleaser.yaml here, so the reusable workflow's
-# goreleaser job is skipped and its id-token/attestations are not granted.
+# Ceiling for the reusable workflow's release-please + publish jobs. GitHub
+# resolves a reusable workflow's permissions statically at startup: it takes the
+# union of every job's declared permissions and ignores `if:`. So the caller must
+# grant what the goreleaser job declares (id-token / attestations /
+# artifact-metadata) even though that job is skipped here (no .goreleaser.yaml) --
+# dropping them startup_failures the whole run. No executed job realizes them at
+# runtime: release-please and publish declare their own narrower job-level
+# permissions, and the goreleaser job never runs.
 permissions:
+  # release-please cuts the release/tag; publish moves the vanity tags
   contents: write
+  # release-please creates pr labels via the issues api
   issues: write
+  # release-please opens the release pull request
   pull-requests: write
+  # cosign keyless signing
+  id-token: write
+  # github build-provenance attestation
+  attestations: write
+  # artifact storage record for the attestation
+  artifact-metadata: write
 
 jobs:
   release:
