@@ -1,0 +1,15 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# zizmor configuration (https://docs.zizmor.sh/configuration/). zizmor audits this
+# repo's GitHub Actions workflows; it runs locally and in CI via `zizmor .` in
+# `make lint`. The reusable CodeQL workflow (.github/workflows/codeql.yaml) also
+# runs zizmor for any consuming repo that ships a config file like this one.
+#
+# This library SHA-pins every third-party action, so require a full commit hash for
+# every `uses:` instead of zizmor's softer default (which also accepts tag refs).
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "*": hash-pin
