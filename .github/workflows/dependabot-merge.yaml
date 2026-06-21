@@ -122,11 +122,13 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
-          # ff-merge moves the ref (contents) and reads the PR (pull-requests);
-          # the approval (minor/patch only) is the authorization gate, not
+          # ff-merge moves the ref (contents) and reads the PR (pull-requests), and
+          # needs workflows to move a ref whose commits touch .github/workflows/
+          # files; the approval (minor/patch only) is the authorization gate, not
           # maintainer-only, so no administration scope is needed.
           permission-contents: write
           permission-pull-requests: write
+          permission-workflows: write
 
       - name: Resolve the open Dependabot PR for this branch
         id: pr

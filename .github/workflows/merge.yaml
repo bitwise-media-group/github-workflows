@@ -105,11 +105,14 @@ jobs:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
           # Least-privilege within the App's installation ceiling: ff-merge moves the
-          # base ref (contents), reads/comments on the PR (pull-requests), and
-          # resolves the actor's access level for maintainer-only (administration).
+          # base ref (contents), reads/comments on the PR (pull-requests), resolves
+          # the actor's access level for maintainer-only (administration), and moves a
+          # ref whose commits touch .github/workflows/ files (workflows — GitHub
+          # rejects any ref update that adds or edits a workflow file without it).
           permission-contents: write
           permission-pull-requests: write
           permission-administration: read
+          permission-workflows: write
 
       - name: Fast-forward merge
         uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
@@ -146,10 +149,12 @@ jobs:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
           # Labels and comments on the PR (pull-requests) and moves the ref via the
-          # best-effort ff-merge (contents); maintainer-only:false here, so no
+          # best-effort ff-merge (contents), which also needs workflows when the merge
+          # touches .github/workflows/ files; maintainer-only:false here, so no
           # administration scope is needed.
           permission-contents: write
           permission-pull-requests: write
+          permission-workflows: write
 
       - name: Resolve the pull request number
         id: pr
@@ -232,10 +237,12 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
-          # ff-merge moves the ref (contents) and reads the PR (pull-requests);
-          # maintainer-only:false here, so no administration scope is needed.
+          # ff-merge moves the ref (contents) and reads the PR (pull-requests), and
+          # needs workflows to move a ref whose commits touch .github/workflows/
+          # files; maintainer-only:false here, so no administration scope is needed.
           permission-contents: write
           permission-pull-requests: write
+          permission-workflows: write
 
       - name: Resolve the open PR for this branch
         id: pr
@@ -296,10 +303,12 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
-          # ff-merge moves the ref (contents) and reads the PR (pull-requests);
-          # maintainer-only:false here, so no administration scope is needed.
+          # ff-merge moves the ref (contents) and reads the PR (pull-requests), and
+          # needs workflows to move a ref whose commits touch .github/workflows/
+          # files; maintainer-only:false here, so no administration scope is needed.
           permission-contents: write
           permission-pull-requests: write
+          permission-workflows: write
 
       - name: Fast-forward merge
         # Best effort, like the arm attempt: a decline (e.g. CI not green yet) must
