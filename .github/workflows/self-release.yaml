@@ -38,3 +38,11 @@ jobs:
     uses: ./.github/workflows/release.yaml
     with:
       vanity-tags: true
+      # Author the release PR as the "FF Merge" App (not the default GITHUB_TOKEN)
+      # so its branch push emits workflow_run events. A GITHUB_TOKEN-authored push
+      # is silenced by GitHub's recursion guard, so the auto-merge in self-merge.yaml
+      # (keyed on workflow_run from CI / Security Analysis) never retriggers when the
+      # release PR's checks go green -- the PR then only merges on the hourly sweep.
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
