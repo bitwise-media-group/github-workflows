@@ -48,7 +48,23 @@ on:
         required: false
         default: false
         type: boolean
+      app-client-id:
+        description: >-
+          Optional client id of a GitHub App used to author the release (e.g. vars.FF_MERGE_CLIENT_ID). When set (with
+          app-private-key) release-please authenticates as the App instead of the default GITHUB_TOKEN, so the release
+          PR's branch push is attributed to the App. Set this when workflow_run-keyed automation must fire for the
+          release PR: a push made with the default GITHUB_TOKEN does NOT emit workflow_run events (GitHub's
+          recursion guard), so auto-merge keyed on workflow_run never retriggers when the release PR's checks go green.
+          Falls back to GITHUB_TOKEN when unset.
+        required: false
+        default: ""
+        type: string
     secrets:
+      app-private-key:
+        description: >-
+          Private key for the App named by app-client-id (e.g. secrets.FF_MERGE_PRIVATE_KEY). Required when app-client-id
+          is set; ignored otherwise.
+        required: false
       homebrew-tap-token:
         description: >-
           PAT with write access to the Homebrew tap repository (secrets.HOMEBREW_TAP_GITHUB_TOKEN). Optional; only
@@ -87,7 +103,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          persist-credentials: false # release-please authenticates with GITHUB_TOKEN, not the persisted credential
+          persist-credentials: false # release-please authenticates with the App token or GITHUB_TOKEN, not the persisted credential
+
+      # When the caller supplies a GitHub App (app-client-id + app-private-key),
+      # mint a short-lived installation token so release-please authors the release
+      # as the App. This is what lets the release PR's branch push emit workflow_run
+      # events: a push made with the default GITHUB_TOKEN is suppressed by GitHub's
+      # recursion guard, so any workflow_run-keyed automation (e.g. the reusable
+      # auto-merge) never fires when a GITHUB_TOKEN-authored release PR goes green.
+      # Skipped when no App is configured: the output is empty and every step below
+      # falls back to GITHUB_TOKEN (release PR still opens, just doesn't retrigger
+      # workflow_run automation).
+      - name: Mint a github app installation token
+        id: app-token
+        if: inputs.app-client-id != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+          # release-please cuts the release/tag (contents) and opens the release PR
+          # (pull-requests); the autorelease:* labels it applies already exist, so
+          # pull-requests:write covers labelling and no issues scope is needed.
+          permission-contents: write
+          permission-pull-requests: write
 
       # The goreleaser output is the config-file hash (empty when absent), used
       # downstream as a truthy flag to pick the goreleaser vs publish job.
@@ -101,6 +139,7 @@ jobs:
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release-please
         with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           skip-github-pull-request: true
 
       # Guarantee the tag exists at the released commit: a draft release (go,
@@ -110,7 +149,7 @@ jobs:
       - name: Create release tag
         if: ${{ steps.release-please.outputs.release_created }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release-please.outputs.tag_name }}
           SHA: ${{ steps.release-please.outputs.sha }}
         run: |
@@ -125,6 +164,7 @@ jobs:
       - name: Create release pull request
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           skip-github-release: true
 
   goreleaser:

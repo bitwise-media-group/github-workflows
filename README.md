@@ -95,9 +95,16 @@ _Any repo._ Runs release-please (two-pass), then branches by detection: a repo w
 (`v1` and `v1.1`).
 
 - **Inputs:** `go-version-file` (default `go.mod`), `node-version-file` (default `.node-version`), `vanity-tags`
-  (default `false`; move the floating `v1` / `v1.1` tags — set it for Actions/reusable repos whose consumers pin `@v1`).
+  (default `false`; move the floating `v1` / `v1.1` tags — set it for Actions/reusable repos whose consumers pin `@v1`),
+  `app-client-id` (optional; author the release as a GitHub App rather than `GITHUB_TOKEN` — `vars.FF_MERGE_CLIENT_ID`).
 - **Secrets:** `homebrew-tap-token` — optional; only needed if `.goreleaser.yaml` publishes a Homebrew cask to another
-  repo (`secrets.HOMEBREW_TAP_GITHUB_TOKEN`).
+  repo (`secrets.HOMEBREW_TAP_GITHUB_TOKEN`). `app-private-key` — optional; required only when `app-client-id` is set
+  (`secrets.FF_MERGE_PRIVATE_KEY`).
+- **Auto-merging release PRs:** set `app-client-id` + `app-private-key` (reuse the "FF Merge" App) so release-please
+  authors the release PR as the App. A release PR whose branch is pushed by the default `GITHUB_TOKEN` does **not** emit
+  `workflow_run` events — GitHub's recursion guard suppresses them — so [`merge.yaml`](#mergeyaml)'s auto-merge, which
+  is keyed on `workflow_run`, never retriggers when its checks go green and the PR only lands on the hourly sweep.
+  Authoring as the App restores the trigger. Skip both inputs if you don't auto-merge release PRs.
 - **Permissions (caller grants):** `contents: write`, `issues: write`, `pull-requests: write`, `id-token: write`,
   `attestations: write`, `artifact-metadata: write`. Grant all six even without a `.goreleaser.yaml`: GitHub resolves a
   reusable workflow's permissions as the union of every job and ignores `if:`, so the skipped GoReleaser job's

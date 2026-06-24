@@ -43,6 +43,13 @@ jobs:
       # move the floating v1 / v1.1 tags -- set for Actions/reusable repos whose
       # consumers pin @v1; drop (defaults false) for Go binaries pinned to exact versions.
       vanity-tags: true
+      # optional -- author the release PR as a GitHub App instead of GITHUB_TOKEN.
+      # Set this only if you auto-merge release PRs via the reusable merge workflow:
+      # a release PR pushed by GITHUB_TOKEN does not emit workflow_run events, so the
+      # auto-merge never retriggers when its checks go green. Reuse the "FF Merge" App.
+      # app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
     secrets:
       # optional -- only needed if .goreleaser.yaml pushes a Homebrew cask to another repo
       homebrew-tap-token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      # optional -- required only when app-client-id is set above
+      # app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
