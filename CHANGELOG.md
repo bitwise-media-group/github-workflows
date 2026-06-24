@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/bitwise-media-group/github-workflows/compare/v3.0.0...v3.1.0) (2026-06-24)
+
+
+### Features
+
+* close linked issues on fast-forward merge ([554c035](https://github.com/bitwise-media-group/github-workflows/commit/554c035c40b10c23f444b5191ecd2e1771bfcf6b))
+
 ## [3.0.0](https://github.com/bitwise-media-group/github-workflows/compare/v2.0.0...v3.0.0) (2026-06-24)
 
 
