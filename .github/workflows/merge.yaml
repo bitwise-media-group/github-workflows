@@ -118,16 +118,18 @@ jobs:
           private-key: ${{ secrets.app-private-key }}
           # Least-privilege within the App's installation ceiling: ff-merge moves the
           # base ref (contents), reads/comments on the PR (pull-requests), resolves
-          # the actor's access level for maintainer-only (administration), and moves a
-          # ref whose commits touch .github/workflows/ files (workflows — GitHub
-          # rejects any ref update that adds or edits a workflow file without it).
+          # the actor's access level for maintainer-only (administration), closes the
+          # PR's linked issues (issues), and moves a ref whose commits touch
+          # .github/workflows/ files (workflows — GitHub rejects any ref update that
+          # adds or edits a workflow file without it).
           permission-contents: write
           permission-pull-requests: write
           permission-administration: read
           permission-workflows: write
+          permission-issues: write
 
       - name: Fast-forward merge
-        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        uses: bitwise-media-group/ff-merge@261714459a53c43ba032fe0e3a3e6f3ab8fd14de # v1.2.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -161,13 +163,14 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
-          # Labels and comments on the PR (pull-requests) and moves the ref via the
-          # best-effort ff-merge (contents), which also needs workflows when the merge
-          # touches .github/workflows/ files; maintainer-only:false here, so no
-          # administration scope is needed.
+          # Labels and comments on the PR (pull-requests), closes the PR's linked
+          # issues (issues), and moves the ref via the best-effort ff-merge (contents),
+          # which also needs workflows when the merge touches .github/workflows/ files;
+          # maintainer-only:false here, so no administration scope is needed.
           permission-contents: write
           permission-pull-requests: write
           permission-workflows: write
+          permission-issues: write
 
       - name: Ensure the auto-merge label is present
         env:
@@ -208,7 +211,7 @@ jobs:
         # fail the run. The merge-on-checks / merge-on-review-completed jobs retry when
         # the state changes; an already-approved, already-green PR merges right here.
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        uses: bitwise-media-group/ff-merge@261714459a53c43ba032fe0e3a3e6f3ab8fd14de # v1.2.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -237,12 +240,14 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
-          # ff-merge moves the ref (contents) and reads the PR (pull-requests), and
-          # needs workflows to move a ref whose commits touch .github/workflows/
-          # files; maintainer-only:false here, so no administration scope is needed.
+          # ff-merge moves the ref (contents), reads the PR (pull-requests), closes the
+          # PR's linked issues (issues), and needs workflows to move a ref whose commits
+          # touch .github/workflows/ files; maintainer-only:false here, so no
+          # administration scope is needed.
           permission-contents: write
           permission-pull-requests: write
           permission-workflows: write
+          permission-issues: write
 
       - name: Resolve the open PR for this branch
         id: pr
@@ -267,7 +272,7 @@ jobs:
         # retries when the next required workflow finishes.
         if: steps.pr.outputs.number != ''
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        uses: bitwise-media-group/ff-merge@261714459a53c43ba032fe0e3a3e6f3ab8fd14de # v1.2.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -305,12 +310,14 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
-          # ff-merge moves the ref (contents) and reads the PR (pull-requests), and
-          # needs workflows to move a ref whose commits touch .github/workflows/
-          # files; maintainer-only:false here, so no administration scope is needed.
+          # ff-merge moves the ref (contents), reads the PR (pull-requests), closes the
+          # PR's linked issues (issues), and needs workflows to move a ref whose commits
+          # touch .github/workflows/ files; maintainer-only:false here, so no
+          # administration scope is needed.
           permission-contents: write
           permission-pull-requests: write
           permission-workflows: write
+          permission-issues: write
 
       - name: Resolve the open PR for this branch
         id: pr
@@ -335,7 +342,7 @@ jobs:
         # next workflow_run — or the scheduled sweep — retries.
         if: steps.pr.outputs.number != ''
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        uses: bitwise-media-group/ff-merge@261714459a53c43ba032fe0e3a3e6f3ab8fd14de # v1.2.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -408,15 +415,18 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
+          # ff-merge closes the PR's linked issues (issues) on a successful sweep merge,
+          # alongside the ref move (contents) and the workflow-file allowance (workflows).
           permission-contents: write
           permission-pull-requests: write
           permission-workflows: write
+          permission-issues: write
 
       - name: Fast-forward merge
         # Best effort: ff-merge declines a PR that is not yet approved/green (expected
         # for one still in flight); the next sweep or an event path retries.
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@76046d3da4a351eb1b1225727a3a7d0d178f1dfe # v1.1.0
+        uses: bitwise-media-group/ff-merge@261714459a53c43ba032fe0e3a3e6f3ab8fd14de # v1.2.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
