@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.0.1](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.0...v6.0.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **deps:** Bump actions/setup-node in the actions group ([#73](https://github.com/bitwise-media-group/github-workflows/issues/73)) ([311b61b](https://github.com/bitwise-media-group/github-workflows/commit/311b61b8011242012160870a01f91add8086bc73))
+* **deps:** Bump astral-sh/setup-uv from 8.3.0 to 8.3.1 ([#69](https://github.com/bitwise-media-group/github-workflows/issues/69)) ([de911e0](https://github.com/bitwise-media-group/github-workflows/commit/de911e05c799ca779c60fad1a253c496a43fd64c))
+* **deps:** Bump astral-sh/setup-uv from 8.3.1 to 8.3.2 ([#72](https://github.com/bitwise-media-group/github-workflows/issues/72)) ([f5daeb7](https://github.com/bitwise-media-group/github-workflows/commit/f5daeb7d1fc6b8a287f34e85cb66ff5df804e540))
+* **deps:** Bump the github group with 2 updates ([#71](https://github.com/bitwise-media-group/github-workflows/issues/71)) ([2939905](https://github.com/bitwise-media-group/github-workflows/commit/2939905df7104193d901cffac6f5786695b04858))
+* **release:** skip container attestation when no images are built ([d02eb1d](https://github.com/bitwise-media-group/github-workflows/commit/d02eb1de4912b6c69d076d36c13af4d545a51fea))
+
 ## [6.0.0](https://github.com/bitwise-media-group/github-workflows/compare/v5.0.0...v6.0.0) (2026-07-13)
 
 
