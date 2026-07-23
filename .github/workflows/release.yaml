@@ -260,7 +260,7 @@ jobs:
           submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins the SBOM step below installs syft from; a no-op where no submodule exists
 
       - name: Setup go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: ${{ inputs.go-version-file }}
           # No build cache in the release-signing job: a cache poisoned from a
@@ -338,7 +338,7 @@ jobs:
       # bundles). Verify with:
       #   gh attestation verify --owner <org> <file>
       - name: Attest release artifacts
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-checksums: ./dist/checksums.txt
 
@@ -353,7 +353,7 @@ jobs:
       #   gh attestation verify --owner <org> oci://ghcr.io/<org>/<image>:<tag>
       - name: Attest container images
         if: ${{ hashFiles('Dockerfile', 'Dockerfile.*') != '' && hashFiles('dist/digests.txt') != '' }}
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-checksums: ./dist/digests.txt
 
