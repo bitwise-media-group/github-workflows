@@ -123,7 +123,7 @@ jobs:
       # neither fails the task-detection step below with a clear error.
       - name: Setup mise
         if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
           version: 2026.7.3
           # sha256 of the mise-v2026.7.3-linux-x64 binary, from the release's
@@ -277,7 +277,7 @@ jobs:
       # See the tasks job's Setup mise step: pinned dev CLIs install via mise.
       - name: Setup mise
         if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
           version: 2026.7.3
           # sha256 of the mise-v2026.7.3-linux-x64 binary, from the release's
