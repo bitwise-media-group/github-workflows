@@ -1,5 +1,23 @@
 # Changelog
 
+## [6.0.2](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.1...v6.0.2) (2026-08-01)
+
+
+### Bug Fixes
+
+* **dependabot-dist:** create the dist rebuild commit via the API so it is signed ([dfa38fe](https://github.com/bitwise-media-group/github-workflows/commit/dfa38fed4f5b52207e981280132fd32dce8df814))
+* **dependabot-merge:** watch the review-ack workflow in the example caller ([3d7dfde](https://github.com/bitwise-media-group/github-workflows/commit/3d7dfde0b42c000e7115b1afb1bbfce33d07ef74))
+* **deps:** Bump astral-sh/setup-uv from 8.3.2 to 9.0.0 ([#83](https://github.com/bitwise-media-group/github-workflows/issues/83)) ([61bee57](https://github.com/bitwise-media-group/github-workflows/commit/61bee5791823b422fb7671c62971bd5f8bbec21d))
+* **deps:** Bump docker/login-action from 4.4.0 to 4.5.0 ([#84](https://github.com/bitwise-media-group/github-workflows/issues/84)) ([caf1102](https://github.com/bitwise-media-group/github-workflows/commit/caf1102eed33831f1d70d2bc43ce48f3f6562581))
+* **deps:** Bump docker/login-action from 4.5.0 to 4.5.1 ([#87](https://github.com/bitwise-media-group/github-workflows/issues/87)) ([aaa2f18](https://github.com/bitwise-media-group/github-workflows/commit/aaa2f18d559442622736c06a3e0e806abb867067))
+* **deps:** Bump jdx/mise-action from 4.2.0 to 4.2.1 ([#80](https://github.com/bitwise-media-group/github-workflows/issues/80)) ([f4c2746](https://github.com/bitwise-media-group/github-workflows/commit/f4c2746bbecb4feab9e75dfee26d1df27fa6969c))
+* **deps:** Bump jdx/mise-action from 4.2.1 to 4.2.3 ([#86](https://github.com/bitwise-media-group/github-workflows/issues/86)) ([bb1f244](https://github.com/bitwise-media-group/github-workflows/commit/bb1f244de57e9d48097453635fd92881e33ce757))
+* **deps:** Bump the actions group across 1 directory with 3 updates ([#81](https://github.com/bitwise-media-group/github-workflows/issues/81)) ([6c0b8bf](https://github.com/bitwise-media-group/github-workflows/commit/6c0b8bf139721f373ea833b50e253261ddbadb1b))
+* **deps:** Bump the github group across 1 directory with 2 updates ([#82](https://github.com/bitwise-media-group/github-workflows/issues/82)) ([0485e33](https://github.com/bitwise-media-group/github-workflows/commit/0485e33b0014112f8ba91777fbf8a82758babc27))
+* **deps:** Bump the github group with 2 updates ([#79](https://github.com/bitwise-media-group/github-workflows/issues/79)) ([f86a925](https://github.com/bitwise-media-group/github-workflows/commit/f86a9258bf569cf7ff89ac41b7f97d1fac9ba1ab))
+* **deps:** Bump zizmorcore/zizmor-action from 0.5.7 to 0.6.0 ([#76](https://github.com/bitwise-media-group/github-workflows/issues/76)) ([cac62bf](https://github.com/bitwise-media-group/github-workflows/commit/cac62bf38d183c96052ba47e256adc11e4be5d9b))
+* **deps:** Bump zizmorcore/zizmor-action from 0.6.0 to 0.6.1 ([#85](https://github.com/bitwise-media-group/github-workflows/issues/85)) ([ff75a24](https://github.com/bitwise-media-group/github-workflows/commit/ff75a2465203e51e56b37b3daa0b930ddd283c37))
+
 ## [6.0.1](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.0...v6.0.1) (2026-07-20)
 
 
