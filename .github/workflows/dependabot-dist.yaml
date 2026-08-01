@@ -11,9 +11,14 @@
 #
 # This workflow closes that gap. When a watched CI run for a `dependabot/` branch FAILS, it
 # checks out the PR head, runs `mise run build`, and -- only if dist/ actually changed --
-# commits the regenerated bundle back to the PR branch as the App. That push re-triggers CI
-# (an App-token push does; a GITHUB_TOKEN push would be suppressed by GitHub's own
-# loop-prevention), and the rerun's dist/ now reproduces, so CI goes green.
+# commits the regenerated bundle back to the PR branch as the App, via the GraphQL
+# createCommitOnBranch mutation rather than `git commit`/`git push`: commits created
+# through that mutation are signed by GitHub and show as Verified, so the PR satisfies a
+# required-signatures rule on EVERY merge path -- including the signature-preserving
+# fast-forward `/merge` flow (merge.yaml), which moves the base ref to the PR head verbatim
+# and would be rejected outright if this commit were unsigned. The push re-triggers CI (an
+# App-token commit does, API-created or not; a GITHUB_TOKEN push would be suppressed by
+# GitHub's own loop-prevention), and the rerun's dist/ now reproduces, so CI goes green.
 #
 # It deliberately does NOT approve or merge. The rebuild commit makes the PR head a
 # non-Dependabot commit, so dependabot-merge.yaml's author+signature gate stops
@@ -29,7 +34,7 @@
 # SECURITY: rebuilding runs the PR's dependency tree (`npm ci` lifecycle scripts + the
 # bundler). To keep the write-capable App token away from that untrusted code, the token is
 # minted first but the checkout persists no credentials and no build step exposes it; the
-# token appears only in the final commit-and-push step, after the build has already run.
+# token appears only in the final commit step, after the build has already run.
 # The blast radius is a Dependabot PR (a same-repo branch carrying dependency bumps), and
 # the token is scoped to contents:write.
 #
@@ -101,8 +106,8 @@ jobs:
           # fetch the shared task library (bitwise-media-group/make), mounted at .mise/
           submodules: true
           # Fetch with the App token but do NOT persist it: the build below runs the PR's
-          # dependency tree, which must never see the write token. The push step re-supplies
-          # the token explicitly, after the build has run.
+          # dependency tree, which must never see the write token. The commit step supplies
+          # the token to the API call explicitly, after the build has run.
           token: ${{ steps.app.outputs.token }}
           persist-credentials: false
 
@@ -130,8 +135,8 @@ jobs:
 
       - name: Commit and push the rebuilt bundle if it changed
         env:
-          TOKEN: ${{ steps.app.outputs.token }}
-          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           PATHS: ${{ inputs.paths }}
         run: |
@@ -147,18 +152,60 @@ jobs:
             exit 0
           fi
 
-          # Author the commit as the App bot. It lives only on the PR branch; the eventual
-          # squash onto the base branch is web-flow-signed by GitHub, so this branch commit
-          # itself needs no signature.
-          git config user.name "${APP_SLUG}[bot]"
-          git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
-          git add -- "${dist_paths[@]}"
-          git commit -m "build(deps): rebuild dist for ${BRANCH}"
+          # The commit is created server-side with the GraphQL createCommitOnBranch
+          # mutation -- not `git commit`/`git push` -- because GitHub signs mutation-created
+          # commits (Verified, attributed to the App bot). A locally-created commit would be
+          # unsigned: the base branch's required-signatures rule would then reject the
+          # signature-preserving fast-forward `/merge` flow, which moves the base ref to the
+          # PR head verbatim (the squash path re-signs anyway, but /merge does not).
+          #
+          # Build the mutation's fileChanges from the working tree: files that still exist
+          # are additions (contents base64-encoded, as the API requires -- binary files
+          # included), files the rebuild removed are deletions. `-z` NUL-delimits entries so
+          # unusual filenames survive; renames never appear for unstaged changes, so every
+          # entry is `XY <path>`. Contents are streamed through files, never argv -- a
+          # bundled dist easily exceeds the kernel's per-argument size limit.
+          tmp=$(mktemp -d)
+          printf '[]' > "${tmp}/additions.json"
+          printf '[]' > "${tmp}/deletions.json"
+          while IFS= read -r -d '' entry; do
+            path=${entry:3}
+            if [ -e "$path" ]; then
+              base64 -w0 < "$path" > "${tmp}/contents.b64"
+              jq --arg p "$path" --rawfile c "${tmp}/contents.b64" \
+                '. + [{path: $p, contents: $c}]' \
+                "${tmp}/additions.json" > "${tmp}/additions.json.new"
+              mv "${tmp}/additions.json.new" "${tmp}/additions.json"
+            else
+              jq --arg p "$path" '. + [{path: $p}]' \
+                "${tmp}/deletions.json" > "${tmp}/deletions.json.new"
+              mv "${tmp}/deletions.json.new" "${tmp}/deletions.json"
+            fi
+          done < <(git status --porcelain -z -- "${dist_paths[@]}")
 
-          # Supply the App token only here, never during the build. An ephemeral basic-auth
-          # extraheader keeps it out of .git/config; the token is a masked secret, so it
-          # stays redacted in logs.
-          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" \
-            push origin "HEAD:${BRANCH}"
-          echo "Pushed rebuilt dist/ to ${BRANCH}; CI will re-run and go green."
+          # expectedHeadOid makes the mutation a compare-and-swap: if the branch moved since
+          # checkout (a Dependabot rebase, say), GitHub refuses instead of clobbering it --
+          # the new head's own CI run re-enters this workflow. The whole request body is
+          # assembled with jq and sent via --input so the (multi-megabyte, base64) contents
+          # never hit a command line. The App token is supplied only here (GH_TOKEN), never
+          # during the build.
+          # shellcheck disable=SC2016 # $input is a GraphQL variable, not shell
+          query='mutation ($input: CreateCommitOnBranchInput!) {
+            createCommitOnBranch(input: $input) { commit { oid } }
+          }'
+          jq -n \
+            --arg query "$query" \
+            --arg repo "$REPO" \
+            --arg branch "$BRANCH" \
+            --arg head "$(git rev-parse HEAD)" \
+            --slurpfile additions "${tmp}/additions.json" \
+            --slurpfile deletions "${tmp}/deletions.json" \
+            '{query: $query, variables: {input: {
+               branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+               expectedHeadOid: $head,
+               message: {headline: ("build(deps): rebuild dist for " + $branch)},
+               fileChanges: {additions: $additions[0], deletions: $deletions[0]}
+             }}}' > "${tmp}/body.json"
+          oid=$(gh api graphql --input "${tmp}/body.json" \
+            --jq '.data.createCommitOnBranch.commit.oid')
+          echo "Pushed rebuilt dist/ to ${BRANCH} as signed commit ${oid}; CI will re-run and go green."
