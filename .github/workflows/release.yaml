@@ -154,7 +154,7 @@ jobs:
       # job-level `if:` on the downstream jobs runs before their checkout and
       # could not see it.
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false # release-please authenticates with the App token or GITHUB_TOKEN, not the persisted credential
 
@@ -252,7 +252,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository at release tag
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0 # GoReleaser needs full history + tags for the changelog
@@ -260,7 +260,7 @@ jobs:
           submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins the SBOM step below installs syft from; a no-op where no submodule exists
 
       - name: Setup go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: ${{ inputs.go-version-file }}
           # No build cache in the release-signing job: a cache poisoned from a
@@ -338,7 +338,7 @@ jobs:
       # bundles). Verify with:
       #   gh attestation verify --owner <org> <file>
       - name: Attest release artifacts
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-checksums: ./dist/checksums.txt
 
@@ -353,7 +353,7 @@ jobs:
       #   gh attestation verify --owner <org> oci://ghcr.io/<org>/<image>:<tag>
       - name: Attest container images
         if: ${{ hashFiles('Dockerfile', 'Dockerfile.*') != '' && hashFiles('dist/digests.txt') != '' }}
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-checksums: ./dist/digests.txt
 
@@ -395,7 +395,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Checkout repository at release tag
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # build the exact commit the release was tagged at
           ref: ${{ needs.release-please.outputs.tag_name }}
