@@ -15,6 +15,10 @@
 # protection that requires PR review (so the approval sets the review decision) —
 # the same assumption as the `/merge` flow.
 #
+# Install the companion examples/merge-review-ack.yaml and keep "Merge Review Ack" in the
+# workflow_run list below — that is what lets a human approval (required for any PR this
+# workflow declines to auto-approve) complete the merge promptly.
+#
 # Prerequisites (one-time, org-wide — see bitwise-media-group/ff-merge):
 #   - org variable FF_MERGE_CLIENT_ID and org secret FF_MERGE_PRIVATE_KEY
 #   - the "FF Merge" App installed on this repo and in the ruleset bypass list
@@ -27,10 +31,16 @@ name: Dependabot Auto-Merge
 # does NOT attach a check run to the PR, so it leaves no skipped-job clutter (and needs
 # no pull_request_target). check_suite is NOT usable — GitHub does not fire it for a
 # repo's own Actions CI. List in `workflows:` every workflow that must pass before
-# merging; whichever finishes last triggers the merge attempt.
+# merging PLUS "Merge Review Ack"; whichever finishes last triggers the merge attempt.
 on:
   workflow_run:
-    workflows: ["CI"] # replace with your CI workflow name(s) — all that must be green
+    # replace "CI" with your CI workflow name(s) — every check that must be green.
+    # Keep "Merge Review Ack" (examples/merge-review-ack.yaml): an approval only fires
+    # pull_request_review, so its ack run completing is what re-enters the merge. Without
+    # it a HUMAN-approved Dependabot PR — e.g. one carrying a dist rebuild commit
+    # (dependabot-dist.yaml), which suppresses the auto-approval — waits for an unrelated
+    # CI event that may never come, and the approval merges nothing.
+    workflows: ["CI", "Merge Review Ack"]
     types: [completed]
 
 # the App token does the privileged work; the caller grants nothing
