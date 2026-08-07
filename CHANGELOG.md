@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.0.3](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.2...v6.0.3) (2026-08-07)
+
+
+### Bug Fixes
+
+* **deps:** Bump actions/attest from 4.2.0 to 4.2.1 in the actions group ([#91](https://github.com/bitwise-media-group/github-workflows/issues/91)) ([307e7a0](https://github.com/bitwise-media-group/github-workflows/commit/307e7a09d7a56555c0c5d6004bdf05159de8e72e))
+* **deps:** Bump docker/login-action from 4.5.1 to 4.5.2 ([#89](https://github.com/bitwise-media-group/github-workflows/issues/89)) ([7884db5](https://github.com/bitwise-media-group/github-workflows/commit/7884db5e93b5b9b65d4ec12d7ee3a9fd1dd8ef5a))
+* **deps:** Bump docker/login-action from 4.5.2 to 4.6.0 ([#92](https://github.com/bitwise-media-group/github-workflows/issues/92)) ([acf5d24](https://github.com/bitwise-media-group/github-workflows/commit/acf5d24314f6d56df68278dcf1e7d6dcfa16a7b3))
+* **deps:** Bump the github group with 2 updates ([#93](https://github.com/bitwise-media-group/github-workflows/issues/93)) ([3ef4685](https://github.com/bitwise-media-group/github-workflows/commit/3ef4685b5485a174730adc4804b24030b180fe5a))
+
 ## [6.0.2](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.1...v6.0.2) (2026-08-01)
 
 
