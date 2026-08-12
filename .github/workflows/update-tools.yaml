@@ -1,0 +1,171 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Reusable cooldown updater for repos whose mise tools float on fuzzy selectors
+# ("latest", "lts") in config and are pinned by the repo's own root mise.lock.
+# `mise lock --bump` re-resolves those selectors against the newest matching
+# releases and rewrites the lockfile only -- config files are never modified. It
+# honours mise's `minimum_release_age`, overridden here via
+# MISE_MINIMUM_RELEASE_AGE from the cooldown-days input, so a release must be at
+# least that many days old before it is adopted -- the same Dependabot-style
+# cooldown Dependabot itself cannot provide (it has no mise ecosystem). The
+# bumps roll into a single pull request on a stable bot branch (force-updated
+# each run, so the PR always reflects the current set of available updates) and
+# land as `fix(deps):` so release-please cuts a patch.
+#
+# Only the repo-root mise.lock is committed. In consumers that mount the shared
+# task library (bitwise-media-group/toolchain) as a submodule at .mise/, any
+# write into the submodule's own lockfile is deliberately left uncommitted:
+# shared-tool bumps belong to the library, which runs this same workflow itself.
+# The two are told apart by resolved path, not name -- the library's dogfood
+# layout reaches its root lockfile through a .mise/mise.lock symlink, which
+# must still count as the root lockfile.
+#
+# Human-reviewed by design (supply-chain sensitive): the PR is never
+# auto-merged. When the caller supplies a GitHub App (app-client-id +
+# app-private-key), the branch push authenticates as the App so the PR's CI
+# runs; a push made with the default GITHUB_TOKEN fallback is suppressed by
+# GitHub's recursion guard and triggers no workflows, so the PR's checks must
+# be started by hand (e.g. close/reopen).
+#
+# Runs via workflow_call from a thin caller (examples/update-tools.yaml) that
+# owns the schedule/workflow_dispatch triggers.
+name: Reusable Update Tools
+
+on:
+  workflow_call:
+    inputs:
+      cooldown-days:
+        description: Minimum age (days) a release must have before it is adopted.
+        required: false
+        default: "7"
+        type: string
+      branch:
+        description: Bot branch the update PR is opened from (force-updated each run).
+        required: false
+        default: bot/update-tools
+        type: string
+      app-client-id:
+        description: >-
+          Optional client id of a GitHub App used to push the update branch (e.g. vars.FF_MERGE_CLIENT_ID). When set
+          (with app-private-key) the push is attributed to the App, so the update PR's CI runs. Falls back to
+          GITHUB_TOKEN when unset -- the PR still opens, but GitHub's recursion guard suppresses its checks.
+        required: false
+        default: ""
+        type: string
+    secrets:
+      app-private-key:
+        description: >-
+          Private key for the App named by app-client-id (e.g. secrets.FF_MERGE_PRIVATE_KEY). Required when
+          app-client-id is set; ignored otherwise.
+        required: false
+
+# granted per job
+permissions: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      # push the update branch
+      contents: write
+      # open/update the pull request
+      pull-requests: write
+    env:
+      BRANCH: ${{ inputs.branch }}
+      # Overrides the repo config's minimum_release_age for this run.
+      MISE_MINIMUM_RELEASE_AGE: ${{ inputs.cooldown-days }}d
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the push below authenticates with the App token or GITHUB_TOKEN explicitly
+          submodules: true # resolve a shared task library mounted at .mise/; a no-op where no submodule exists
+
+      # See the header: an App-authenticated push is what lets the update PR's
+      # CI run. Skipped when no App is configured; the push step falls back to
+      # GITHUB_TOKEN.
+      - name: Mint a github app installation token
+        id: app-token
+        if: inputs.app-client-id != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+          # push the bot branch (contents) and open/update the PR (pull-requests)
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Setup mise
+        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
+        with:
+          version: 2026.8.4
+          # sha256 of the mise-v2026.8.4-linux-x64 binary, from the release's
+          # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
+          sha256: 00ea78fa93b4f6372d221501a06336d515b0e0f47f99a0d1c4883ce05e01074e
+          install: false # nothing to install -- `mise lock --bump` resolves versions without installing
+
+      - name: Bump the lockfile
+        id: update
+        env:
+          # mise resolves github:-backend releases (and the aqua registry) via
+          # the GitHub API; unauthenticated calls rate-limit on shared runners
+          # and silently DROP lockfile entries for the tools they fail on
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # trust every config layer: the repo's own config plus a shared task
+          # library mounted (or symlinked) at .mise/
+          mise trust --quiet --all
+          # fails loudly when the repo has no root lockfile -- this workflow is
+          # only for repos whose tools are locked at the repo root
+          root_lock="$(realpath mise.lock)"
+          changes="$(mise lock --bump --json)"
+          # Keep only version changes to the repo's own root lockfile, compared
+          # by resolved path (see the header: a submodule's lockfile under
+          # .mise/ is excluded; the library's .mise/mise.lock symlink is not).
+          # mise prints lockfile paths ~-abbreviated, so undo that first.
+          updates="$(printf '%s' "$changes" \
+            | jq -r '.[] | [.lockfile, .name, (.old_versions | join(", ")), (.new_versions | join(", "))] | @tsv' \
+            | while IFS=$'\t' read -r lockfile name old new; do
+                [ "$(realpath "${lockfile/#\~\//$HOME/}" 2>/dev/null)" = "$root_lock" ] || continue
+                printf '%s: %s -> %s\n' "$name" "$old" "$new"
+              done)"
+          if [ -z "$updates" ]; then
+            echo "all locked tool versions are up to date (cooldown ${MISE_MINIMUM_RELEASE_AGE})"
+            exit 0
+          fi
+          {
+            echo "updates<<EOF"
+            printf '%s\n' "$updates"
+            echo "EOF"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Open or update pull request
+        if: steps.update.outputs.updates != ''
+        env:
+          UPDATES: ${{ steps.update.outputs.updates }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git switch -C "$BRANCH"
+          git add -- mise.lock
+          git commit -m 'fix(deps): update locked tool versions' -m "$UPDATES"
+          # bot-owned branch, safe to reset; the checkout persisted no
+          # credential, so authenticate the push explicitly (GitHub masks the
+          # token in logs)
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
+
+          body="Automated tool version bumps (newest release at least ${MISE_MINIMUM_RELEASE_AGE%d} days old):
+
+          ${UPDATES}"
+
+          if gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null | grep -qx OPEN; then
+            gh pr edit "$BRANCH" --body "$body"
+          else
+            gh pr create --base "${GITHUB_REF_NAME}" --head "$BRANCH" \
+              --title 'fix(deps): update locked tool versions' --body "$body"
+          fi

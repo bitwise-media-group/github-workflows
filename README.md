@@ -24,6 +24,7 @@ action is pinned to a full commit SHA; Dependabot keeps the pins fresh.
 | [`dependabot-merge.yaml`](#dependabot-mergeyaml) | any      | auto-approves Dependabot minor/patch PRs and squash-merges them once CI is green                                          |
 | [`dependabot-dist.yaml`](#dependabot-distyaml)   | node     | rebuilds committed `dist/` on a Dependabot PR when a bundled-dep bump made CI's dist check go red                         |
 | [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                 |
+| [`update-tools.yaml`](#update-toolsyaml)         | any      | daily `mise lock --bump` under a release cooldown; version bumps land as one reviewed `fix(deps):` PR                     |
 
 Each workflow below lists its inputs, secrets, and the permission ceiling the **caller** must grant — a reusable
 workflow's jobs cannot exceed the permissions of the job that calls them. The snippet is the minimal caller; follow the
@@ -372,6 +373,39 @@ jobs:
 ```
 
 Full example: [`examples/add-to-project.yaml`](examples/add-to-project.yaml).
+
+### `update-tools.yaml`
+
+_Any repo whose mise tools float on fuzzy selectors (`"latest"`, `"lts"`) and are locked in a root `mise.lock`._
+Dependabot has no mise ecosystem, so this replaces it: `mise lock --bump` re-resolves the selectors against the newest
+releases that have aged past the cooldown (`MISE_MINIMUM_RELEASE_AGE`, from `cooldown-days`) and rewrites the lockfile
+only — config files are never modified. Version changes land as a single `fix(deps):` PR on a stable bot branch
+(force-updated each run), so release-please cuts a patch when it merges. Only the **root** `mise.lock` is committed: in
+repos that mount the shared task library as a submodule at `.mise/`, the submodule's own lockfile is never touched here
+— shared-tool bumps belong to the library, which runs this same workflow itself. Human-reviewed by design (supply-chain
+sensitive): the PR is never auto-merged. Supply a GitHub App so the branch push triggers the PR's CI; with the
+`GITHUB_TOKEN` fallback GitHub's recursion guard suppresses the checks.
+
+- **Inputs:** `cooldown-days` (default `"7"`), `branch` (default `bot/update-tools`), `app-client-id` (optional; App
+  that authors the push so CI runs on the PR).
+- **Secrets:** `app-private-key` — required when `app-client-id` is set.
+- **Permissions (caller grants):** `contents: write`, `pull-requests: write`.
+- **Triggers (the caller owns it):** `schedule` (daily) plus `workflow_dispatch` with a `cooldown-days` input.
+
+```yaml
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  update:
+    uses: bitwise-media-group/github-workflows/.github/workflows/update-tools.yaml@v6
+```
+
+Full example: [`examples/update-tools.yaml`](examples/update-tools.yaml).
 
 ## Consumer contracts
 
