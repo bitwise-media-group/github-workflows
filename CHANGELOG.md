@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.1.0](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.3...v6.1.0) (2026-08-12)
+
+
+### Features
+
+* add reusable update-tools workflow ([c9a856e](https://github.com/bitwise-media-group/github-workflows/commit/c9a856eef976e71158fdd83b1aaff6b86442afc4))
+
+
+### Bug Fixes
+
+* **deps:** Bump actions/attest from 4.2.1 to 4.2.2 in the actions group ([#98](https://github.com/bitwise-media-group/github-workflows/issues/98)) ([7a86caa](https://github.com/bitwise-media-group/github-workflows/commit/7a86caa73e6a79501414d543b71e39ec9597476a))
+* **deps:** Bump jdx/mise-action from 4.2.3 to 4.2.4 ([#95](https://github.com/bitwise-media-group/github-workflows/issues/95)) ([b63a9df](https://github.com/bitwise-media-group/github-workflows/commit/b63a9df90c997991a7811daa8d36b81531926aff))
+* **deps:** Bump the github group with 2 updates ([#94](https://github.com/bitwise-media-group/github-workflows/issues/94)) ([8104aab](https://github.com/bitwise-media-group/github-workflows/commit/8104aabfa7dc55d93ba02d73a9e73afa73cec8e6))
+* **deps:** Bump the github group with 2 updates ([#99](https://github.com/bitwise-media-group/github-workflows/issues/99)) ([cf38444](https://github.com/bitwise-media-group/github-workflows/commit/cf384447023c497fb6ce5e277cd8e2f82824b944))
+* **deps:** Bump zizmorcore/zizmor-action from 0.6.1 to 0.6.2 ([#96](https://github.com/bitwise-media-group/github-workflows/issues/96)) ([9906493](https://github.com/bitwise-media-group/github-workflows/commit/99064937b94f76dab8fd836bbf08be79e3b2ba95))
+
 ## [6.0.3](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.2...v6.0.3) (2026-08-07)
 
 
