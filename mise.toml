@@ -6,9 +6,12 @@
 # from there, and the Makefile is a thin forwarder (.mise/mise.mk). zizmor is
 # the one repo-local tool (workflow security lint); repo-local tasks live in
 # tasks.toml (included after the archetype so its lint redefinition wins).
+# zizmor floats on "latest" with the real pin in the root mise.lock; the daily
+# self-update-tools workflow bumps it with `mise lock --bump` under the
+# release cooldown.
 
 [tools]
-"aqua:zizmorcore/zizmor" = "1.26.1"
+"aqua:zizmorcore/zizmor" = "latest"
 
 [task_config]
 includes = [".mise/tasks/markdown-lib.toml", "tasks.toml"]
