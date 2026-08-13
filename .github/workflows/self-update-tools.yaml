@@ -6,6 +6,12 @@
 # one repo-local tool is zizmor, floating on "latest" in the root mise.toml and
 # pinned by the root mise.lock; the shared toolchain tools live in the .mise/
 # submodule and are bumped upstream, never here.
+#
+# The bump commit is authored by the "FF Merge" App (org variable
+# FF_MERGE_CLIENT_ID + org secret FF_MERGE_PRIVATE_KEY -- see
+# bitwise-media-group/ff-merge, the same App as the /merge flow), so the update
+# PR's CI runs on its own; the GITHUB_TOKEN fallback's recursion guard would
+# suppress those checks.
 name: Update Tools
 
 on:
@@ -35,3 +41,8 @@ jobs:
     uses: ./.github/workflows/update-tools.yaml
     with:
       cooldown-days: ${{ github.event.inputs.cooldown-days || '7' }}
+      # the App authors the bump commit, so the update PR's CI runs; without it
+      # the GITHUB_TOKEN fallback's recursion guard would suppress the checks
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
