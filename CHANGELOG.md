@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.1.1](https://github.com/bitwise-media-group/github-workflows/compare/v6.1.0...v6.1.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* **deps:** Bump jdx/mise-action from 4.2.3 to 4.2.4 ([#101](https://github.com/bitwise-media-group/github-workflows/issues/101)) ([2d0c51e](https://github.com/bitwise-media-group/github-workflows/commit/2d0c51e77b3db00631c48f7119c8c8e9bbf2b050))
+* **update-tools:** create the bump commit via the API so it lands verified ([c374777](https://github.com/bitwise-media-group/github-workflows/commit/c3747772888d4d93b6befe550723ab2eafad7c1f))
+
 ## [6.1.0](https://github.com/bitwise-media-group/github-workflows/compare/v6.0.3...v6.1.0) (2026-08-12)
 
 
