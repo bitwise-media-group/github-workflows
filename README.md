@@ -382,12 +382,14 @@ releases that have aged past the cooldown (`MISE_MINIMUM_RELEASE_AGE`, from `coo
 only — config files are never modified. Version changes land as a single `fix(deps):` PR on a stable bot branch
 (force-updated each run), so release-please cuts a patch when it merges. Only the **root** `mise.lock` is committed: in
 repos that mount the shared task library as a submodule at `.mise/`, the submodule's own lockfile is never touched here
-— shared-tool bumps belong to the library, which runs this same workflow itself. Human-reviewed by design (supply-chain
-sensitive): the PR is never auto-merged. Supply a GitHub App so the branch push triggers the PR's CI; with the
+— shared-tool bumps belong to the library, which runs this same workflow itself. The bump commit is created through the
+GitHub API (`createCommitOnBranch`), so GitHub signs it server-side and it lands **verified** — satisfying a
+required-signatures rule that a runner-side `git commit` could never pass. Human-reviewed by design (supply-chain
+sensitive): the PR is never auto-merged. Supply a GitHub App so the branch update triggers the PR's CI; with the
 `GITHUB_TOKEN` fallback GitHub's recursion guard suppresses the checks.
 
 - **Inputs:** `cooldown-days` (default `"7"`), `branch` (default `bot/update-tools`), `app-client-id` (optional; App
-  that authors the push so CI runs on the PR).
+  that authors the bump commit so CI runs on the PR).
 - **Secrets:** `app-private-key` — required when `app-client-id` is set.
 - **Permissions (caller grants):** `contents: write`, `pull-requests: write`.
 - **Triggers (the caller owns it):** `schedule` (daily) plus `workflow_dispatch` with a `cooldown-days` input.

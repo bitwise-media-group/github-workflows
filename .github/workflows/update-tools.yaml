@@ -21,12 +21,22 @@
 # layout reaches its root lockfile through a .mise/mise.lock symlink, which
 # must still count as the root lockfile.
 #
+# The bump commit is created through the GitHub API (the createCommitOnBranch
+# mutation), never with runner-side git: GitHub signs API-created commits
+# server-side, so the commit lands VERIFIED and passes a required-signatures
+# rule -- an unsigned `git commit` from the runner would leave the PR
+# permanently unmergeable under such a rule. The branch overwrite works by
+# force-resetting the bot branch ref to the base HEAD via the Git refs API and
+# then adding the single bump commit on top -- the same "branch always mirrors
+# base + current bumps" semantics as a force-push.
+#
 # Human-reviewed by design (supply-chain sensitive): the PR is never
 # auto-merged. When the caller supplies a GitHub App (app-client-id +
-# app-private-key), the branch push authenticates as the App so the PR's CI
-# runs; a push made with the default GITHUB_TOKEN fallback is suppressed by
-# GitHub's recursion guard and triggers no workflows, so the PR's checks must
-# be started by hand (e.g. close/reopen).
+# app-private-key), the commit is authored by the App and its ref update
+# triggers the PR's CI; with the default GITHUB_TOKEN fallback the commit is
+# authored by github-actions[bot] (still verified) but GitHub's recursion
+# guard suppresses any triggered workflows, so the PR's checks must be
+# started by hand (e.g. close/reopen).
 #
 # Runs via workflow_call from a thin caller (examples/update-tools.yaml) that
 # owns the schedule/workflow_dispatch triggers.
@@ -67,7 +77,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
-      # push the update branch
+      # reset the bot branch ref and create the bump commit via the API
       contents: write
       # open/update the pull request
       pull-requests: write
@@ -79,12 +89,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false # the push below authenticates with the App token or GITHUB_TOKEN explicitly
+          persist-credentials: false # nothing is pushed with git; the API commit below authenticates explicitly
           submodules: true # resolve a shared task library mounted at .mise/; a no-op where no submodule exists
 
-      # See the header: an App-authenticated push is what lets the update PR's
-      # CI run. Skipped when no App is configured; the push step falls back to
-      # GITHUB_TOKEN.
+      # See the header: an App-authenticated API commit is what lets the update
+      # PR's CI run. Skipped when no App is configured; the commit step falls
+      # back to GITHUB_TOKEN.
       - name: Mint a github app installation token
         id: app-token
         if: inputs.app-client-id != ''
@@ -92,7 +102,7 @@ jobs:
         with:
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
-          # push the bot branch (contents) and open/update the PR (pull-requests)
+          # reset the bot branch and create the bump commit (contents); open/update the PR (pull-requests)
           permission-contents: write
           permission-pull-requests: write
 
@@ -148,16 +158,39 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          git switch -C "$BRANCH"
-          git add -- mise.lock
-          git commit -m 'fix(deps): update locked tool versions' -m "$UPDATES"
-          # bot-owned branch, safe to reset; the checkout persisted no
-          # credential, so authenticate the push explicitly (GitHub masks the
-          # token in logs)
-          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
+          # Commit via the API, not git (see the header): GitHub signs commits
+          # it creates server-side, so the bump commit is VERIFIED and satisfies
+          # a required-signatures rule. Bot-owned branch, safe to overwrite:
+          # force-reset (or create) it at the base HEAD, then lay the single
+          # bump commit on top -- the same overwrite semantics as the previous
+          # force-push, done ref-first so expectedHeadOid below cannot race.
+          base="$(git rev-parse HEAD)"
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${BRANCH}" --silent 2>/dev/null; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCH}" \
+              -f sha="$base" -F force=true --silent
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/heads/${BRANCH}" -f sha="$base" --silent
+          fi
+          # shellcheck disable=SC2016 # the single-quoted $vars are GraphQL variables, not shell
+          gh api graphql \
+            -f nwo="$GITHUB_REPOSITORY" \
+            -f branch="$BRANCH" \
+            -f head="$base" \
+            -f headline='fix(deps): update locked tool versions' \
+            -f body="$UPDATES" \
+            -f contents="$(base64 -w0 mise.lock)" \
+            -f query='
+              mutation ($nwo: String!, $branch: String!, $head: GitObjectID!, $headline: String!, $body: String!, $contents: Base64String!) {
+                createCommitOnBranch(input: {
+                  branch: { repositoryNameWithOwner: $nwo, branchName: $branch }
+                  expectedHeadOid: $head
+                  message: { headline: $headline, body: $body }
+                  fileChanges: { additions: [{ path: "mise.lock", contents: $contents }] }
+                }) { commit { oid } }
+              }' \
+            --jq '"created verified commit " + .data.createCommitOnBranch.commit.oid'
 
           body="Automated tool version bumps (newest release at least ${MISE_MINIMUM_RELEASE_AGE%d} days old):
 
