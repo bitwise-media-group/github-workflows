@@ -11,7 +11,8 @@ Copy a caller from [`examples/`](examples/) into your repo's `.github/workflows/
 ## Catalog
 
 All reusable workflows live in [`.github/workflows/`](.github/workflows/) and are `workflow_call`-only. Every external
-action is pinned to a full commit SHA; Dependabot keeps the pins fresh.
+action is pinned to a full commit SHA; the org Renovate bot
+([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)) keeps the pins fresh.
 
 | Workflow                                         | Platform | What it does                                                                                                              |
 | ------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -442,7 +443,7 @@ A caller may mix a reusable-workflow job with normal jobs — e.g. a Go CLI keep
 
 The examples reference `@v2`, the floating major tag, which moves to each release in the v2.x line (a matching minor tag
 `@v2.1` moves too). Pin to a release tag (`@v2.1.0`) or a full commit SHA for stricter supply-chain guarantees;
-Dependabot can bump either. Avoid `@main` except for short-lived testing.
+Dependabot and Renovate can bump either. Avoid `@main` except for short-lived testing.
 
 ## Fast-forward merge: org setup
 
@@ -464,9 +465,11 @@ toolchain from the root `mise.toml` and runs the one task this repo defines, `li
 `release.yaml` (no `.goreleaser.yaml`, so just the release-please cut plus the `vanity-tags` job). `self-security.yaml`
 stays a bespoke `actions`-only scan: the library has no compilable Go and no JS/TS product source, so an `actions`
 CodeQL pass is the whole surface. The `/merge` + auto-merge flows (`self-merge.yaml`), its fork-PR review-ack companion
-(`self-merge-review-ack.yaml`), the merge notice (`self-merge-notice.yaml`), and Dependabot auto-merge
-(`self-dependabot-merge.yaml`, which keeps the reusable workflows' action pins fresh) dogfood the rest. Validate a
-change to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA
+(`self-merge-review-ack.yaml`), and the merge notice (`self-merge-notice.yaml`) dogfood the rest. This repo's own
+dependency automation (action SHA pins, the mise toolchain lockfile, and the `.mise` submodule tag) is the org Renovate
+bot ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)) — the reusable
+`dependabot-merge.yaml` / `dependabot-dist.yaml` / `update-tools.yaml` remain for consumers still on Dependabot.
+Validate a change to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA
 (`@your-branch`) and opening a PR there.
 
 ## Releasing this repo
