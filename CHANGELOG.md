@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.2.0](https://github.com/bitwise-media-group/github-workflows/compare/v6.1.1...v6.2.0) (2026-08-15)
+
+
+### Features
+
+* **merge:** squash-merge Renovate pull requests instead of fast-forwarding ([52cd8d7](https://github.com/bitwise-media-group/github-workflows/commit/52cd8d7d7c46ae2217aa0e5a1da03e6329b98ebc))
+
+
+### Bug Fixes
+
+* **deps:** update dependency jdx/mise to v2026.8.4 ([#111](https://github.com/bitwise-media-group/github-workflows/issues/111)) ([96a3ac2](https://github.com/bitwise-media-group/github-workflows/commit/96a3ac249b29263ba24077ebb5ed50935df7c714))
+* v-prefix the mise-action version input so renovate can track it ([feb4025](https://github.com/bitwise-media-group/github-workflows/commit/feb4025a6103af72896ba2abdfb8fb9cf710a28c))
+
 ## [6.1.1](https://github.com/bitwise-media-group/github-workflows/compare/v6.1.0...v6.1.1) (2026-08-13)
 
 
