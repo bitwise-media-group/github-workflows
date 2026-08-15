@@ -51,6 +51,15 @@
 # require-approval:true, so a qualifying approval plus green checks is always required.
 # Requires branch protection that requires PR review. See README.md for the one-time
 # org setup (App, ruleset bypass, org var/secret).
+#
+# Renovate PRs ride the same flow with one difference in mechanics: Renovate's shared
+# preset (renovate-config) applies the arming label to the update types it does not
+# automerge itself (majors, 0.x), and ff-merge squash-merges PRs from the authors in
+# squash-authors instead of fast-forwarding — Renovate never rebases its branches onto
+# the base, so they are never fast-forwardable, while an API squash needs only a
+# conflict-free branch and lands a GitHub-signed (web-flow) commit that satisfies the
+# required-signatures ruleset. Approval plus green checks is still required, so a
+# breaking-change PR merges the moment a human approves it, with no rebase queue.
 name: Reusable Merge
 
 on:
@@ -85,6 +94,16 @@ on:
         required: false
         default: true
         type: boolean
+      squash-authors:
+        # Needs ff-merge >= 1.4.0; older pins warn on the unknown input and keep
+        # fast-forwarding (renovate bumps the pin like any other action).
+        description: >-
+          Author logins whose pull requests are squash-merged via the API instead of
+          fast-forwarded (never-rebased bot branches; the squash commit is web-flow
+          signed). Comma- or space-separated.
+        required: false
+        default: bitwise-renovate[bot]
+        type: string
     secrets:
       app-private-key:
         description: The private key for the github app used to perform the merge (secrets.FF_MERGE_PRIVATE_KEY)
@@ -133,7 +152,7 @@ jobs:
           permission-statuses: read
 
       - name: Fast-forward merge
-        uses: bitwise-media-group/ff-merge@94615f876da1a46e175f1fd7c5d2f2798030fe3b # v1.3.0
+        uses: bitwise-media-group/ff-merge@1a02f39b8ce17bad9f004fa1f0f8ff042b970722 # v1.4.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -142,6 +161,7 @@ jobs:
           actor: ${{ github.actor }}
           require-approval: ${{ inputs.require-approval }}
           maintainer-only: ${{ inputs.maintainer-only }}
+          squash-authors: ${{ inputs.squash-authors }}
 
   arm:
     # A maintainer comments /auto-merge. Gated to org members; ff-merge re-verifies
@@ -219,7 +239,7 @@ jobs:
         # fail the run. The merge-on-checks / merge-on-review-completed jobs retry when
         # the state changes; an already-approved, already-green PR merges right here.
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@94615f876da1a46e175f1fd7c5d2f2798030fe3b # v1.3.0
+        uses: bitwise-media-group/ff-merge@1a02f39b8ce17bad9f004fa1f0f8ff042b970722 # v1.4.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -228,6 +248,7 @@ jobs:
           require-approval: true
           maintainer-only: false
           require-label: ${{ inputs.label }}
+          squash-authors: ${{ inputs.squash-authors }}
 
   merge-on-checks:
     # A required CI workflow finished green. workflow_run carries the branch, not
@@ -283,7 +304,7 @@ jobs:
         # retries when the next required workflow finishes.
         if: steps.pr.outputs.number != ''
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@94615f876da1a46e175f1fd7c5d2f2798030fe3b # v1.3.0
+        uses: bitwise-media-group/ff-merge@1a02f39b8ce17bad9f004fa1f0f8ff042b970722 # v1.4.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -292,6 +313,7 @@ jobs:
           require-approval: true
           maintainer-only: false
           require-label: ${{ inputs.label }}
+          squash-authors: ${{ inputs.squash-authors }}
 
   merge-on-review-completed:
     # The approval path for EVERY PR, fork and same-repo alike. pull_request_review is
@@ -356,7 +378,7 @@ jobs:
         # next workflow_run — or the scheduled sweep — retries.
         if: steps.pr.outputs.number != ''
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@94615f876da1a46e175f1fd7c5d2f2798030fe3b # v1.3.0
+        uses: bitwise-media-group/ff-merge@1a02f39b8ce17bad9f004fa1f0f8ff042b970722 # v1.4.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -365,6 +387,7 @@ jobs:
           require-approval: true
           maintainer-only: false
           require-label: ${{ inputs.label }}
+          squash-authors: ${{ inputs.squash-authors }}
 
   sweep-prep:
     # Scheduled backstop. The event paths (issue_comment, workflow_run, review-ack)
@@ -444,7 +467,7 @@ jobs:
         # Best effort: ff-merge declines a PR that is not yet approved/green (expected
         # for one still in flight); the next sweep or an event path retries.
         continue-on-error: true
-        uses: bitwise-media-group/ff-merge@94615f876da1a46e175f1fd7c5d2f2798030fe3b # v1.3.0
+        uses: bitwise-media-group/ff-merge@1a02f39b8ce17bad9f004fa1f0f8ff042b970722 # v1.4.0
         with:
           token: ${{ steps.app.outputs.token }}
           repository: ${{ github.repository }}
@@ -453,3 +476,4 @@ jobs:
           require-approval: true
           maintainer-only: false
           require-label: ${{ inputs.label }}
+          squash-authors: ${{ inputs.squash-authors }}

@@ -160,7 +160,14 @@ that requires PR review. See [org setup](#fast-forward-merge-org-setup).
 
 - **Inputs:** `app-client-id` (required; `vars.FF_MERGE_CLIENT_ID`), `merge-command` (default `/merge`), `arm-command`
   (default `/auto-merge`), `label` (default `auto-merge`), `require-approval` (default `true`), `maintainer-only`
-  (default `true`).
+  (default `true`), `squash-authors` (default `bitwise-renovate[bot]`; author logins whose PRs are squash-merged via the
+  API instead of fast-forwarded — see below).
+- **Renovate PRs (squash instead of fast-forward):** Renovate's shared preset arms the update types it does not
+  automerge itself (majors, 0.x) with the `auto-merge` label, and `ff-merge` squash-merges PRs from the `squash-authors`
+  logins rather than fast-forwarding: Renovate never rebases its branches onto the base (`rebaseWhen: conflicted`), so
+  they are never fast-forwardable, while an API squash needs only a conflict-free branch and lands a GitHub-signed
+  (`web-flow`) commit that satisfies the required-signatures ruleset. Approval plus green checks is still required, so a
+  breaking-change PR merges the moment a human approves it — no bot rebase queue, no manual merge.
 - **Secrets:** `app-private-key` — required (`secrets.FF_MERGE_PRIVATE_KEY`).
 - **Permissions (caller grants):** none — the App token does the privileged work, so the caller sets `permissions: {}`.
 - **Triggers (the caller owns them):** `issue_comment` (`created`) drives `/merge` and arms `/auto-merge`;
