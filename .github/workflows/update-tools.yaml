@@ -109,10 +109,10 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.8.15
+          version: v2026.8.16
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: a6dea05e896f1e6090f821588f45397262270e0e0b456252f8d1da28a416f3f2
+          sha256: cff4832ded79af2951e800bddcb5a22acac58630d765a2d062c1180680a0bb35
           install: false # nothing to install -- `mise lock --bump` resolves versions without installing
 
       - name: Bump the lockfile
