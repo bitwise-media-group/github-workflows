@@ -125,10 +125,10 @@ jobs:
         if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.9.0
+          version: v2026.9.1
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: c9b089f2be1db4d4262eacaf367e480e7a328848adcc37d9d1612996902485d0
+          sha256: c98423c8470d6dc416d9f7036d0646d8ef5ae92ad9186907f8fcc84cbe7db4ea
 
       # A repo defines only the canonical tasks that do real work -- there are
       # no no-op stubs -- so ask mise for the task list and skip the tasks this
@@ -279,10 +279,10 @@ jobs:
         if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.9.0
+          version: v2026.9.1
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: c9b089f2be1db4d4262eacaf367e480e7a328848adcc37d9d1612996902485d0
+          sha256: c98423c8470d6dc416d9f7036d0646d8ef5ae92ad9186907f8fcc84cbe7db4ea
 
       # No task-existence gate here: e2e is opt-in (`e2e: true` in the caller),
       # so a repo that opts in without defining the task should fail loudly.
