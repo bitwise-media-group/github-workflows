@@ -21,4 +21,4 @@ permissions: {}
 
 jobs:
   ack:
-    uses: ./.github/workflows/merge-review-ack.yaml
+    uses: $/.github/workflows/merge-review-ack.yaml

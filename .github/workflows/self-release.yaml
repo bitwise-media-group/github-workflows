@@ -44,7 +44,7 @@ permissions:
 
 jobs:
   release:
-    uses: ./.github/workflows/release.yaml
+    uses: $/.github/workflows/release.yaml
     with:
       vanity-tags: true
       # Author the release PR as the "FF Merge" App (not the default GITHUB_TOKEN)

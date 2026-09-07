@@ -31,6 +31,6 @@ permissions:
 
 jobs:
   analyze:
-    uses: ./.github/workflows/security.yaml
+    uses: $/.github/workflows/security.yaml
     with:
       languages: actions

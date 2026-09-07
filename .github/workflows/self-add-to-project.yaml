@@ -20,7 +20,7 @@ permissions: {}
 
 jobs:
   add:
-    uses: ./.github/workflows/add-to-project.yaml
+    uses: $/.github/workflows/add-to-project.yaml
     with:
       project-url: https://github.com/orgs/bitwise-media-group/projects/1
       app-client-id: ${{ vars.ADD_TO_PROJECT_CLIENT_ID }}

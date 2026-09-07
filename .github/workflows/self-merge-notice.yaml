@@ -22,6 +22,6 @@ permissions:
 
 jobs:
   notice:
-    uses: ./.github/workflows/merge-notice.yaml
+    uses: $/.github/workflows/merge-notice.yaml
     with:
       pr-number: ${{ github.event.pull_request.number }}
