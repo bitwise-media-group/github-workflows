@@ -27,6 +27,12 @@ They defend against:
 - **Secret leakage across the call boundary** — secrets are passed explicitly through `workflow_call.secrets` (no
   `secrets: inherit`), and `run:` steps pass interpolated values through quoted environment variables rather than
   inlining them into the script, avoiding expression-injection.
+- **Apple signing material** — the Developer ID certificate and App Store Connect API key that sign and notarize macOS
+  binaries in `release.yaml` are passed only through `workflow_call.secrets` into GoReleaser's environment and consumed
+  in-process by its embedded quill; they are never written to the workspace or logged (the base64 values are
+  single-line, so GitHub's secret masking covers them). The single shared certificate is an org secret whose visibility
+  list is the allowlist of repositories that may sign as the organisation, and it is revocable and rotatable in one
+  place.
 
 Out of scope: a compromise of the GitHub Actions runner executing a workflow; a compromise of a consumer repository's
 own secrets, PATs, or branch protections; and the trust placed in first-party `bitwise-media-group` actions referenced

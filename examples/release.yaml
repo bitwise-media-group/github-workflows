@@ -4,8 +4,9 @@
 # Caller workflow -- copy to `.github/workflows/release.yaml` in any repo. It owns
 # the push trigger and grants the release permissions; the reusable release
 # workflow runs release-please (two-pass) then, when a .goreleaser.yaml exists,
-# GoReleaser (archives, checksums, SBOMs, cosign signatures, optional Homebrew
-# cask, SLSA attestation), and when a zensical.toml exists, rebuilds the docs site
+# GoReleaser (archives, checksums, SBOMs, cosign signatures, Developer ID-signed
+# + notarized macOS binaries when the macos-* secrets are passed, optional
+# Homebrew cask, SLSA attestation), and when a zensical.toml exists, rebuilds the docs site
 # and publishes it to GitHub Pages. With vanity-tags: true it moves the floating
 # v1 / v1.1 tags that consumers pin. A committed dist/ is verified in CI, not at
 # release.
@@ -62,3 +63,13 @@ jobs:
       homebrew-tap-token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
       # optional -- required only when app-client-id is set above
       # app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
+      # optional -- Apple signing + notarization of the darwin binaries, for a
+      # .goreleaser.yaml with a notarize.macos block. Org secrets (the shared
+      # open-source Developer ID certificate + the team notary key), scoped to
+      # the notarizing repos -- see README "macOS notarization: org setup".
+      # macos-sign-p12: ${{ secrets.MACOS_SIGN_P12 }}
+      # macos-sign-password: ${{ secrets.MACOS_SIGN_PASSWORD }}
+      # macos-notary-issuer-id: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+      # macos-notary-key-id: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      # macos-notary-key: ${{ secrets.MACOS_NOTARY_KEY }}
+

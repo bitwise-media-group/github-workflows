@@ -14,18 +14,18 @@ All reusable workflows live in [`.github/workflows/`](.github/workflows/) and ar
 action is pinned to a full commit SHA; the org Renovate bot
 ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)) keeps the pins fresh.
 
-| Workflow                                         | Platform | What it does                                                                                                              |
-| ------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| [`ci.yaml`](#ciyaml)                             | any      | canonical mise tasks (lint/build/test) per job, committed `dist/` verified, toolchains by detection, Codecov upload       |
-| [`security.yaml`](#securityyaml)                 | any      | CodeQL over actions + go (autobuild) + javascript-typescript, language matrix by detection                                |
-| [`release.yaml`](#releaseyaml)                   | any      | release-please (two-pass) → GoReleaser (if `.goreleaser.yaml`) + Zensical docs to Pages (if `zensical.toml`); vanity tags |
-| [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward merge — `/merge` now, or `/auto-merge` (comment/label) when approved + green            |
-| [`merge-review-ack.yaml`](#merge-review-ackyaml) | any      | companion to `merge.yaml` — lets fork PRs auto-merge promptly when approved after CI is green                             |
-| [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                                       |
-| [`dependabot-merge.yaml`](#dependabot-mergeyaml) | any      | auto-approves Dependabot minor/patch PRs and squash-merges them once CI is green                                          |
-| [`dependabot-dist.yaml`](#dependabot-distyaml)   | node     | rebuilds committed `dist/` on a Dependabot PR when a bundled-dep bump made CI's dist check go red                         |
-| [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                 |
-| [`update-tools.yaml`](#update-toolsyaml)         | any      | daily `mise lock --bump` under a release cooldown; version bumps land as one reviewed `fix(deps):` PR                     |
+| Workflow                                         | Platform | What it does                                                                                                                                                 |
+| ------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`ci.yaml`](#ciyaml)                             | any      | canonical mise tasks (lint/build/test) per job, committed `dist/` verified, toolchains by detection, Codecov upload                                          |
+| [`security.yaml`](#securityyaml)                 | any      | CodeQL over actions + go (autobuild) + javascript-typescript, language matrix by detection                                                                   |
+| [`release.yaml`](#releaseyaml)                   | any      | release-please (two-pass) → GoReleaser (if `.goreleaser.yaml`; signed + notarized macOS binaries) + Zensical docs to Pages (if `zensical.toml`); vanity tags |
+| [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward merge — `/merge` now, or `/auto-merge` (comment/label) when approved + green                                               |
+| [`merge-review-ack.yaml`](#merge-review-ackyaml) | any      | companion to `merge.yaml` — lets fork PRs auto-merge promptly when approved after CI is green                                                                |
+| [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                                          |
+| [`dependabot-merge.yaml`](#dependabot-mergeyaml) | any      | auto-approves Dependabot minor/patch PRs and squash-merges them once CI is green                                                                             |
+| [`dependabot-dist.yaml`](#dependabot-distyaml)   | node     | rebuilds committed `dist/` on a Dependabot PR when a bundled-dep bump made CI's dist check go red                                                            |
+| [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                                                    |
+| [`update-tools.yaml`](#update-toolsyaml)         | any      | daily `mise lock --bump` under a release cooldown; version bumps land as one reviewed `fix(deps):` PR                                                        |
 
 Each workflow below lists its inputs, secrets, and the permission ceiling the **caller** must grant — a reusable
 workflow's jobs cannot exceed the permissions of the job that calls them. The snippet is the minimal caller; follow the
@@ -96,19 +96,23 @@ Full example: [`examples/security.yaml`](examples/security.yaml).
 ### `release.yaml`
 
 _Any repo._ Runs release-please (two-pass), then branches by detection: a repo with a `.goreleaser.yaml` runs GoReleaser
-(archives, checksums, SBOMs, cosign signatures, optional Homebrew cask, SLSA attestation); every other repo's release is
-just the release-please cut. A repo with a `zensical.toml` also rebuilds its Zensical docs site
-(`uv run zensical build`) and publishes it to GitHub Pages — gated on an actual release and keyed off config presence
-exactly like the GoReleaser path, so it is independent of GoReleaser (a repo can ship binaries and docs from one
-release). With `vanity-tags: true` it also moves the floating major and minor tags (`v1` and `v1.1`). A committed
-`dist/` is verified for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
+(archives, checksums, SBOMs, cosign signatures, Developer ID-signed and notarized macOS binaries, optional Homebrew
+cask, SLSA attestation); every other repo's release is just the release-please cut. A repo with a `zensical.toml` also
+rebuilds its Zensical docs site (`uv run zensical build`) and publishes it to GitHub Pages — gated on an actual release
+and keyed off config presence exactly like the GoReleaser path, so it is independent of GoReleaser (a repo can ship
+binaries and docs from one release). With `vanity-tags: true` it also moves the floating major and minor tags (`v1` and
+`v1.1`). A committed `dist/` is verified for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
 
 - **Inputs:** `go-version-file` (default `go.mod`), `vanity-tags` (default `false`; move the floating `v1` / `v1.1` tags
   — set it for Actions/reusable repos whose consumers pin `@v1`), `app-client-id` (optional; author the release as a
   GitHub App rather than `GITHUB_TOKEN` — `vars.FF_MERGE_CLIENT_ID`).
 - **Secrets:** `homebrew-tap-token` — optional; only needed if `.goreleaser.yaml` publishes a Homebrew cask to another
   repo (`secrets.HOMEBREW_TAP_GITHUB_TOKEN`). `app-private-key` — optional; required only when `app-client-id` is set
-  (`secrets.FF_MERGE_PRIVATE_KEY`).
+  (`secrets.FF_MERGE_PRIVATE_KEY`). `macos-sign-p12`, `macos-sign-password`, `macos-notary-issuer-id`,
+  `macos-notary-key-id`, `macos-notary-key` — optional; only read by a `.goreleaser.yaml` with a `notarize.macos` block
+  (`secrets.MACOS_SIGN_P12` / `MACOS_SIGN_PASSWORD` / `MACOS_NOTARY_ISSUER_ID` / `MACOS_NOTARY_KEY_ID` /
+  `MACOS_NOTARY_KEY`). All five are org secrets scoped to the notarizing repos — the shared open-source Developer ID
+  certificate and the team notary key — see [macOS notarization: org setup](#macos-notarization-org-setup).
 - **Auto-merging release PRs:** set `app-client-id` + `app-private-key` (reuse the "FF Merge" App) so release-please
   authors the release PR as the App. A release PR whose branch is pushed by the default `GITHUB_TOKEN` does **not** emit
   `workflow_run` events — GitHub's recursion guard suppresses them — so [`merge.yaml`](#mergeyaml)'s auto-merge, which
@@ -118,6 +122,12 @@ release). With `vanity-tags: true` it also moves the floating major and minor ta
   Pages → Source → GitHub Actions**. On each release the `docs` job runs `uv run zensical build` and deploys `./site` to
   Pages. It renders `docs/` only — no language build — so a repo whose docs embed generated reference (e.g. a CLI/man
   dump) must commit that output. Nothing to configure beyond the file and the Pages source.
+- **Signing and notarizing macOS binaries:** add a
+  [`notarize.macos`](https://goreleaser.com/customization/sign/notarize/) block to `.goreleaser.yaml` and pass the five
+  `macos-*` secrets. GoReleaser's embedded quill signs each darwin binary with the org's Developer ID certificate and
+  submits it to Apple's notary service from the Linux runner — no macOS runner, no Pro licence — so a downloaded binary
+  runs without a Gatekeeper prompt and the Homebrew cask needs no quarantine-stripping hook. One-time org setup and the
+  consumer-side config are in [macOS notarization: org setup](#macos-notarization-org-setup).
 - **Permissions (caller grants):** `contents: write`, `issues: write`, `pull-requests: write`, `id-token: write`,
   `attestations: write`, `artifact-metadata: write`, `pages: write`. Grant all seven even without a `.goreleaser.yaml`
   or `zensical.toml`: GitHub resolves a reusable workflow's permissions as the union of every job and ignores `if:`, so
@@ -441,7 +451,9 @@ up toolchains from the files at the repo root:
   (`release-type: go`, `draft: true`) selects the GoReleaser path, otherwise the release is just the release-please cut.
   A `zensical.toml` selects the docs path (rebuild the Zensical site and publish to Pages; needs Pages set to GitHub
   Actions and `pages: write`). Set `vanity-tags: true` to move the floating `v1` / `v1.1` tags (after GoReleaser when
-  present); a committed `dist/` is verified in CI, not here.
+  present); a committed `dist/` is verified in CI, not here. To sign and notarize macOS binaries, add a `notarize.macos`
+  block to `.goreleaser.yaml` and pass the `macos-*` secrets (see
+  [macOS notarization: org setup](#macos-notarization-org-setup)).
 
 A caller may mix a reusable-workflow job with normal jobs — e.g. a Go CLI keeps its product-specific `integration` /
 `e2e` jobs in the same `ci.yaml` that calls the reusable `ci.yaml`.
@@ -463,7 +475,119 @@ reminder. The one-time org setup (the "FF Merge" GitHub App, its ruleset bypass,
 > **Note on App input names.** This library's contract is input `app-client-id` + secret `app-private-key`, backed by
 > `vars.FF_MERGE_CLIENT_ID` / `secrets.FF_MERGE_PRIVATE_KEY`. Existing callers across the org currently use inconsistent
 > names (`client-id`/`app-key`, or `app-id`/`app-key` with `FF_APP_ID`/`FF_APP_KEY`); align them to the names above when
-> migrating to these reusable workflows.
+> migrating to these reusable workflows. The macOS notarization secrets follow the same convention: `macos-sign-p12` ←
+> `secrets.MACOS_SIGN_P12`, `macos-sign-password` ← `MACOS_SIGN_PASSWORD`, `macos-notary-issuer-id` ←
+> `MACOS_NOTARY_ISSUER_ID`, `macos-notary-key-id` ← `MACOS_NOTARY_KEY_ID`, `macos-notary-key` ← `MACOS_NOTARY_KEY`.
+
+## macOS notarization: org setup
+
+`release.yaml` signs and notarizes the darwin binaries of any consumer whose `.goreleaser.yaml` has a
+[`notarize.macos`](https://goreleaser.com/customization/sign/notarize/) block: GoReleaser's embedded
+[quill](https://github.com/anchore/quill) signs each Mach-O with a Developer ID Application certificate (hardened
+runtime flag set, Apple timestamp attached) and submits it to Apple's notary service, all on the `ubuntu-latest` runner
+— no macOS runner and no GoReleaser Pro. A notarized binary runs from a browser download without a Gatekeeper prompt
+(the ticket is fetched online on first run; a bare Mach-O cannot be stapled), so the Homebrew cask needs no
+`xattr -dr com.apple.quarantine` hook. The setup below is done **once for the organisation**: one shared Developer ID
+Application certificate and one App Store Connect team API key, stored as five org secrets visible only to the
+repositories that notarize. Every Developer ID Application certificate Apple issues to the team carries the identical
+subject (`Developer ID Application: <Team> (<TEAMID>)` — the CSR's CN and email are not carried into it), so per-binary
+certificates would only buy independent revocation at the cost of a `.p12` secret per repo.
+
+**Prerequisites.** Apple Developer Program membership current and the latest agreements accepted, signed in as the
+**Account Holder** — the only role that can create Developer ID certificates.
+`gh auth refresh -h github.com -s admin:org` once so `gh secret set --org` works. `quill` (`brew install quill` or
+`mise use -g aqua:anchore/quill`) only for the optional `.p12` check.
+
+**Step 1 — the shared signing certificate (once).** Make a key and CSR, have Apple issue the certificate against it, and
+bundle leaf + key into a `.p12`. The CN and email only label the CSR in the portal; Apple composes the issued subject
+itself.
+
+```sh
+name=bitwise-oss
+dir=$(mktemp -d)
+# key + CSR (RSA-2048)
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout "$dir/$name.key" -out "$dir/$name.certSigningRequest" \
+  -subj "/emailAddress=oss@bitwisemedia.co.uk/CN=BitWise Media Group OSS Release Signing/C=GB"
+```
+
+At <https://developer.apple.com/account/resources/certificates/add>: **Software → Developer ID → Developer ID
+Application**, profile type **G2 Sub-CA**, upload `$dir/$name.certSigningRequest`, then **Download**
+(`developerID_application.cer`).
+
+```sh
+# p12 = leaf + key. quill attaches Apple's Developer ID G2 chain itself, so no
+# `quill p12 attach-chain`; OpenSSL 3's default PBES2/AES-256 encryption decodes
+# fine, so do NOT pass -legacy. `-in` needs PEM, hence the DER conversion first.
+openssl x509 -inform der -in developerID_installer.cer -out "$dir/$name.crt"
+password=$(openssl rand -base64 24)
+openssl pkcs12 -export -inkey "$dir/$name.key" -in "$dir/$name.crt" -name "$name" \
+  -out "$dir/$name.p12" -passout "pass:$password"
+quill p12 describe "$dir/$name.p12"    # optional: shows the leaf + the resolved chain
+# record these, and back the .p12 + password up in the password manager: Apple
+# cannot re-issue a private key, so a lost key means revoke + reissue.
+openssl x509 -in "$dir/$name.crt" -noout -serial -fingerprint -sha256 -enddate
+```
+
+**Step 2 — the team API key (once).** App Store Connect → **Users and Access → Integrations → App Store Connect API →
+Team Keys → Generate**: name `GitHub Actions Notarization`, access **Developer**. Download `AuthKey_<KEYID>.p8` (offered
+once) and copy the **Issuer ID** (top of the page) and the **Key ID**.
+
+**Step 3 — org secrets, visible to the notarizing repos only.** The base64 values are single-line so GitHub masks them
+in logs. Clean up the local key material once the secrets are set and the backup is in the password manager.
+
+```sh
+org=bitwise-media-group; repos=dotty,patchy,evolve
+gh secret set MACOS_SIGN_P12         --org $org --visibility selected --repos $repos \
+  --body "$(base64 -i "$dir/$name.p12" | tr -d '\n')"
+gh secret set MACOS_SIGN_PASSWORD    --org $org --visibility selected --repos $repos --body "$password"
+gh secret set MACOS_NOTARY_ISSUER_ID --org $org --visibility selected --repos $repos --body "<issuer id>"
+gh secret set MACOS_NOTARY_KEY_ID    --org $org --visibility selected --repos $repos --body "<key id>"
+gh secret set MACOS_NOTARY_KEY       --org $org --visibility selected --repos $repos \
+  --body "$(base64 -i ~/Downloads/AuthKey_<KEYID>.p8 | tr -d '\n')"
+
+rm -rf "$dir" ~/Downloads/AuthKey_<KEYID>.p8 ~/Downloads/developerID_application.cer
+```
+
+**Consumer side.** Put darwin in its own build id and limit `binary_signs.ids` to the non-darwin ids: GoReleaser runs
+`binary_signs` (cosign) _before_ notarization, which rewrites the Mach-O in place, so a cosign bundle over the darwin
+binary would never verify against what ships — and the OSS `binary_signs` has no per-artifact `if`, so the build id is
+the only handle. The darwin binaries are covered by the Apple signature and notarization plus the SLSA attestation over
+`checksums.txt`. Then add the block and pass the five secrets from the caller (commented lines in
+[`examples/release.yaml`](examples/release.yaml)):
+
+```yaml
+notarize:
+  macos:
+    # every real release notarizes (and fails if the secrets are missing); a
+    # snapshot only does when MACOS_SIGN_P12 is exported, so `goreleaser
+    # release --snapshot` stays offline and a local end-to-end test is one env
+    # export away
+    - enabled: '{{ or (not .IsSnapshot) (isEnvSet "MACOS_SIGN_P12") }}'
+      ids: [<darwin build id>]
+      sign:
+        certificate: "{{ .Env.MACOS_SIGN_P12 }}"
+        password: "{{ .Env.MACOS_SIGN_PASSWORD }}"
+      notarize:
+        issuer_id: "{{ .Env.MACOS_NOTARY_ISSUER_ID }}"
+        key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
+        key: "{{ .Env.MACOS_NOTARY_KEY }}"
+        wait: true
+        timeout: 15m
+```
+
+Verify a shipped binary on a Mac with `codesign -dv --verbose=4 <binary>` (Authority =
+`Developer ID Application: … (TEAMID)`, flags include `runtime`) and `spctl -a -vv -t install <binary>`
+(`source=Notarized Developer ID`).
+
+**Onboarding another repo.** Add it to each secret's repository list — org **Settings → Secrets and variables →
+Actions**, or `gh api -X PUT orgs/$org/actions/secrets/<NAME>/repositories/$(gh api repos/$org/<repo> --jq .id)` for
+each of the five — then make the consumer-side changes. No new Apple material is needed.
+
+**Rotation and revocation.** The certificate is valid for five years. Revoking it in the developer portal invalidates
+future signing for every repo at once (binaries already notarized keep running), so rotate by issuing a new certificate
+with step 1 and re-running the `MACOS_SIGN_P12` / `MACOS_SIGN_PASSWORD` `gh secret set`. The API key is revoked in App
+Store Connect → Team Keys; generate a new one and re-run the three `MACOS_NOTARY_*` `gh secret set`s.
 
 ## Testing changes
 

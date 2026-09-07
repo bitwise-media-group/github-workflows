@@ -6,10 +6,12 @@
 # cuts the GitHub release and vX.Y.Z tag. What happens next depends on the repo:
 #
 #   - A repo with a .goreleaser.yaml takes the `goreleaser` job: GoReleaser builds
-#     archives + checksums + SBOMs + keyless cosign signatures, an optional
-#     Homebrew cask, and a GitHub build-provenance attestation over checksums.txt
-#     (plus digests.txt when the repo publishes container images via
-#     docker_digest), then adopts and publishes the draft release.
+#     archives + checksums + SBOMs + keyless cosign signatures, Developer
+#     ID-signed + notarized darwin binaries (goreleaser `notarize.macos`, when the
+#     caller passes the `macos-*` secrets), an optional Homebrew cask, and a
+#     GitHub build-provenance attestation over checksums.txt (plus digests.txt
+#     when the repo publishes container images via docker_digest), then adopts
+#     and publishes the draft release.
 #   - A repo with a zensical.toml takes the `docs` job: it rebuilds the Zensical
 #     site (uv run zensical build) and publishes it to GitHub Pages. This is keyed
 #     off the same config-presence detection as the goreleaser path and is
@@ -82,6 +84,38 @@ on:
         description: >-
           PAT with write access to the Homebrew tap repository (secrets.HOMEBREW_TAP_GITHUB_TOKEN). Optional; only
           needed if .goreleaser.yaml publishes a cask.
+        required: false
+      # Apple signing + notarization material for a .goreleaser.yaml with a
+      # `notarize.macos` block. All five are org secrets, scoped to the repos that
+      # notarize (the org's one shared open-source Developer ID certificate and
+      # one App Store Connect team API key); a repo whose config has no notarize
+      # block leaves them out. Setup: README -> "macOS notarization: org setup".
+      macos-sign-p12:
+        description: >-
+          Base64 of the .p12 (Developer ID Application certificate + private key) that signs the darwin binaries
+          (secrets.MACOS_SIGN_P12, the org's shared open-source signing certificate). Optional; only read by a
+          .goreleaser.yaml with a notarize.macos block. See README -> macOS notarization.
+        required: false
+      macos-sign-password:
+        description: >-
+          Export password of the .p12 in macos-sign-p12 (secrets.MACOS_SIGN_PASSWORD). Optional; only read by a
+          .goreleaser.yaml with a notarize.macos block. See README -> macOS notarization.
+        required: false
+      macos-notary-issuer-id:
+        description: >-
+          Issuer ID of the App Store Connect team API key that submits the notarization
+          (secrets.MACOS_NOTARY_ISSUER_ID). Optional; only read by a .goreleaser.yaml with a notarize.macos block. See
+          README -> macOS notarization.
+        required: false
+      macos-notary-key-id:
+        description: >-
+          Key ID of that App Store Connect team API key (secrets.MACOS_NOTARY_KEY_ID). Optional; only read by a
+          .goreleaser.yaml with a notarize.macos block. See README -> macOS notarization.
+        required: false
+      macos-notary-key:
+        description: >-
+          Base64 of that App Store Connect team API key's .p8 private key (secrets.MACOS_NOTARY_KEY). Optional; only
+          read by a .goreleaser.yaml with a notarize.macos block. See README -> macOS notarization.
         required: false
     # Surface the release-please result so a caller can add release-only jobs.
     # Every value is an empty string when this run did not cut a release, so gate
@@ -332,6 +366,20 @@ jobs:
           # PAT with write access to the Homebrew tap -- the default GITHUB_TOKEN
           # cannot push the cask to another repository.
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.homebrew-tap-token }}
+          # Developer ID certificate + App Store Connect API key for a
+          # .goreleaser.yaml `notarize.macos` block: goreleaser's embedded quill
+          # signs and notarizes the darwin binaries in-process, on this Linux
+          # runner (no macOS runner, no Pro licence; `version: latest` above is
+          # past the v2.5 that introduced it). Empty values are harmless --
+          # goreleaser's isEnvSet treats an empty variable as unset, and a config
+          # without a notarize block never reads them. The two base64 values are
+          # single-line so GitHub's secret masking covers them in the log.
+          MACOS_SIGN_P12: ${{ secrets.macos-sign-p12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.macos-sign-password }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.macos-notary-issuer-id }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.macos-notary-key-id }}
+          MACOS_NOTARY_KEY: ${{ secrets.macos-notary-key }}
+
 
       # Attest SLSA build provenance (the default mode when no predicate is given)
       # for every file listed in checksums.txt (archives + SBOMs + signature
