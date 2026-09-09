@@ -23,6 +23,7 @@ action is pinned to a full commit SHA; the org Renovate bot
 | [`merge-review-ack.yaml`](#merge-review-ackyaml) | any      | companion to `merge.yaml` — lets fork PRs auto-merge promptly when approved after CI is green                                                                |
 | [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                                          |
 | [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                                                    |
+| [`renovate.yaml`](#renovateyaml)                 | any      | per-repository Renovate run — the org bot's App, config and preset on this repo's own schedule, plus instant runs on a dashboard / PR checkbox tick          |
 
 Each workflow below lists its inputs, secrets, and the permission ceiling the **caller** must grant — a reusable
 workflow's jobs cannot exceed the permissions of the job that calls them. The snippet is the minimal caller; follow the
@@ -305,6 +306,58 @@ jobs:
 
 Full example: [`examples/add-to-project.yaml`](examples/add-to-project.yaml).
 
+### `renovate.yaml`
+
+_Any repo._ Runs the org's self-hosted [Renovate](https://docs.renovatebot.com/) bot against **this repository only** —
+same "Renovate" App, same bot-side config and org preset from
+[`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config) — so each repo has its
+own schedule and its runs are parallel and independent of the org-wide loop, which grows longer with every repository it
+walks. The job checks out the config repository and hands `renovate-global.json5` to Renovate unchanged, then pins the
+run to the calling repository through the environment (autodiscover off, `repositories` = this repo). Beyond the cron,
+the caller listens for `issues: [edited]` and `pull_request: [edited]`: a human ticking a checkbox in the Dependency
+Dashboard issue or a Renovate PR body (rebase/retry, create rate-limited PRs, …) is a body edit, and the job runs
+Renovate immediately instead of at the next tick. Renovate's own body rewrites (a Bot sender) are filtered out so a run
+never triggers the next one, and edits to any other issue or PR skip the job. The merge model is the org bot's:
+API-created Verified commits, the App's pull-request ruleset bypass for squash-merging green in-policy PRs, one
+automerge per base branch per run. The App token is scoped to the calling repository, so the config repository must be
+public (it is).
+
+- **Inputs:** `app-client-id` (required; `vars.RENOVATE_CLIENT_ID`), `config-repository` (default
+  `bitwise-media-group/renovate-config`), `config-ref` (default `main`), `config-file` (default
+  `renovate-global.json5`), `dry-run` (default empty = live; `extract`, `lookup` or `full`), `log-level` (default
+  `info`).
+- **Secrets:** `app-private-key` — required (`secrets.RENOVATE_PRIVATE_KEY`).
+- **Permissions (caller grants):** none — the App token does the privileged work, so the caller sets `permissions: {}`.
+- **Triggers (the caller owns it):** `schedule` (hourly — Renovate automerges one PR per base branch per run, so the
+  cron is also the merge throughput), `workflow_dispatch` (forwarding `dry-run` / `log-level`), `issues` (`edited`) and
+  `pull_request` (`edited`). The `pull_request` trigger leaves a skipped job on every PR body edit that is not a
+  Renovate checkbox; that is the price of reacting to the checkbox at all.
+- **Org setup:** the "Renovate" App installed on the repo, exposed as the `RENOVATE_CLIENT_ID` variable +
+  `RENOVATE_PRIVATE_KEY` secret (org-level, all repositories). Keep the org-wide bot off a repo that runs this caller —
+  exclude it in the org bot's `autodiscoverFilter`, or retire that loop once every repo carries the caller — since two
+  bots on one repo race on branches and automerge.
+
+```yaml
+on:
+  schedule:
+    - cron: "24 * * * *"
+  workflow_dispatch:
+  issues:
+    types: [edited]
+  pull_request:
+    types: [edited]
+permissions: {}
+jobs:
+  renovate:
+    uses: bitwise-media-group/github-workflows/.github/workflows/renovate.yaml@v7
+    with:
+      app-client-id: ${{ vars.RENOVATE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.RENOVATE_PRIVATE_KEY }}
+```
+
+Full example: [`examples/renovate.yaml`](examples/renovate.yaml).
+
 ## Consumer contracts
 
 The reusable workflows stay free of per-repo configuration by assuming a small contract. The **mise config is the
@@ -483,11 +536,12 @@ pinned by the `.mise/` toolchain submodule and runs the one task this repo defin
 calls `release.yaml` (no `.goreleaser.yaml`, so just the release-please cut plus the `vanity-tags` job).
 `self-security.yaml` stays a bespoke `actions`-only scan: the library has no compilable Go and no JS/TS product source,
 so an `actions` CodeQL pass is the whole surface. The `/merge` + auto-merge flows (`self-merge.yaml`), its fork-PR
-review-ack companion (`self-merge-review-ack.yaml`), and the merge notice (`self-merge-notice.yaml`) dogfood the rest.
-This repo's own dependency automation (action SHA pins, the mise toolchain lockfile, and the `.mise` submodule tag) is
-the org Renovate bot ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)).
-Validate a change to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA
-(`@your-branch`) and opening a PR there.
+review-ack companion (`self-merge-review-ack.yaml`), the merge notice (`self-merge-notice.yaml`) and the per-repo
+Renovate run (`self-renovate.yaml`) dogfood the rest. That Renovate run is also this repo's own dependency automation
+(action SHA pins and the `.mise` submodule tag), on the org bot's config from
+[`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config). Validate a change to a
+reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA (`@your-branch`) and
+opening a PR there.
 
 ## Releasing this repo
 

@@ -1,0 +1,185 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Reusable per-repository Renovate run. The org's self-hosted bot
+# (bitwise-media-group/renovate-config, .github/workflows/renovate.yaml) walks every
+# repository the "Renovate" App is installed on in one serial run, and that loop grows
+# with every repository added -- a repo waits a whole cycle for a rebase or an
+# automerge. This runs the same bot -- same App, same bot-side config, same org preset
+# -- against the calling repository only, so every repo has its own schedule and its
+# runs are parallel and independent of the others.
+#
+# Two triggers beyond the cron make it responsive. The Dependency Dashboard issue and
+# every Renovate PR body carry checkboxes (rebase/retry this PR, create all
+# rate-limited PRs, ...) that Renovate honours on its *next* run. The caller listens
+# for `issues: [edited]` and `pull_request: [edited]`; the job below filters those to a
+# body edit by a human (a checkbox tick is a body edit) on the dashboard issue or on a
+# renovate/* PR the bot opened, and runs Renovate now instead of at the next tick.
+# Renovate's own edits -- it rewrites the dashboard and every PR body on each run --
+# arrive from the App, a Bot sender, and are filtered out; otherwise every run would
+# trigger the next.
+#
+# The merge model is the org bot's, unchanged (renovate-config's README has the
+# detail): the App installation token creates commits through the GitHub API
+# (platformCommit), so they show Verified and satisfy required_signatures; the App is
+# a bypass actor on the pull-request ruleset, so Renovate squash-merges its own green
+# in-policy PRs via the API on a later run; and Renovate automerges at most one PR per
+# base branch per run, so the hourly cron is also the merge throughput.
+#
+# Nothing bot-side is duplicated here. The job checks out the config repository and
+# hands renovate-global.json5 to Renovate unchanged, then pins the run to this one
+# repository through the environment -- Renovate resolves env over file, so the
+# file's autodiscover is switched off and `repositories` names the caller. The App
+# token is scoped to the calling repository (least privilege; the run needs nothing
+# else), which is why the config repository must be public -- it is.
+#
+# Runs via workflow_call from a thin caller (examples/renovate.yaml) that owns the
+# schedule / workflow_dispatch / issues / pull_request triggers.
+name: Reusable Renovate
+
+on:
+  workflow_call:
+    inputs:
+      app-client-id:
+        description: Client id of the org's Renovate GitHub App (vars.RENOVATE_CLIENT_ID).
+        required: true
+        type: string
+      config-repository:
+        description: >-
+          owner/name of the repository holding the bot-side Renovate config (renovate-global.json5). Must be readable
+          with a token scoped to the calling repository, i.e. public.
+        required: false
+        default: bitwise-media-group/renovate-config
+        type: string
+      config-ref:
+        description: Git ref of config-repository to take the bot-side config from.
+        required: false
+        default: main
+        type: string
+      config-file:
+        description: Path of the bot-side (global) config file inside config-repository.
+        required: false
+        default: renovate-global.json5
+        type: string
+      dry-run:
+        description: 'Dry-run mode: empty (live), "extract", "lookup", or "full".'
+        required: false
+        default: ""
+        type: string
+      log-level:
+        description: Renovate log level (info or debug).
+        required: false
+        default: info
+        type: string
+    secrets:
+      app-private-key:
+        description: Private key of the org's Renovate GitHub App (secrets.RENOVATE_PRIVATE_KEY).
+        required: true
+
+# the App token does the privileged work; the job's GITHUB_TOKEN is unused
+permissions: {}
+
+jobs:
+  renovate:
+    # Route by event. schedule and workflow_dispatch always run. issues.edited and
+    # pull_request.edited run only for a human's edit to the body (changes.body is
+    # present only when the body changed, and a checkbox tick is a body edit) of the
+    # Dependency Dashboard issue or of a renovate/* PR the bot opened. The bot's own
+    # rewrites (sender type Bot) never re-trigger, and edits to any other issue or PR
+    # skip the job. Any other event a caller wires up is ignored.
+    if: >-
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.action == 'edited' &&
+       github.event.changes.body && github.event.sender.type == 'User' &&
+       github.event.issue.user.type == 'Bot' && github.event.issue.title == 'Dependency Dashboard') ||
+      (github.event_name == 'pull_request' && github.event.action == 'edited' &&
+       github.event.changes.body && github.event.sender.type == 'User' &&
+       github.event.pull_request.user.type == 'Bot' && startsWith(github.event.pull_request.head.ref, 'renovate/'))
+    runs-on: ubuntu-latest
+    # strictly one run per repository at a time: parallel runs would race on branch
+    # pushes and automerge. Queued, never cancelled -- a checkbox tick that lands
+    # mid-run still gets its own run afterwards.
+    concurrency:
+      group: renovate-${{ github.repository }}
+      cancel-in-progress: false
+    permissions: {}
+    steps:
+      - name: Mint a github app installation token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+          owner: ${{ github.repository_owner }}
+          # this repository only -- unlike the org bot's installation-wide token,
+          # nothing here autodiscovers
+          repositories: ${{ github.event.repository.name }}
+          # downscoped to what Renovate does (the App's installation grants, minus
+          # members): API commits, branches and merges (contents, workflows for
+          # .github/workflows edits), PRs and the dashboard issue, the
+          # renovate/stability-days commit status, reading check runs to gate
+          # automerge, repo settings and Dependabot alerts (vulnerabilityAlerts)
+          permission-contents: write
+          permission-workflows: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-statuses: write
+          permission-checks: read
+          permission-administration: read
+          permission-vulnerability-alerts: read
+
+      # The bot-side config is the org's, read from its repository rather than copied
+      # here, so a policy change there reaches every per-repo run on its next tick. A
+      # repo-scoped installation token reads public repositories, the same way the
+      # default GITHUB_TOKEN checks out any public repo.
+      - name: Checkout the renovate config repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.config-repository }}
+          ref: ${{ inputs.config-ref }}
+          path: renovate-config
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false # read-only checkout; don't leave the token in .git/config
+
+      # Repository cache: persists Renovate's extraction/lookup state for this repo
+      # between runs so an unchanged repo is cheap. The Renovate container runs as uid
+      # 12021, so ownership is handed over before the run and back after (the save
+      # step's tar runs as the runner user). Actions caches are already scoped per
+      # repository, so the key needs no repo component.
+      - name: Restore repository cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/renovate/cache/renovate/repository
+          key: renovate-cache-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: renovate-cache-
+
+      - name: Hand cache to the renovate container user
+        run: |
+          mkdir -p /tmp/renovate/cache/renovate/repository
+          sudo chown -R 12021:0 /tmp/renovate/
+
+      - name: Run renovate
+        uses: renovatebot/github-action@39b914146caeff8cd512e61c8992f1d5913af85c # v46.2.5
+        with:
+          configurationFile: renovate-config/${{ inputs.config-file }}
+          token: ${{ steps.app-token.outputs.token }}
+        env:
+          # pin the run to this repository: env outranks the config file in Renovate's
+          # precedence, so the file's `autodiscover: true` is overridden and the
+          # repository list is just the caller
+          RENOVATE_AUTODISCOVER: "false"
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_REPOSITORY_CACHE: enabled
+          RENOVATE_DRY_RUN: ${{ inputs.dry-run }}
+          LOG_LEVEL: ${{ inputs.log-level }}
+
+      - name: Hand cache back to the runner user
+        if: always()
+        run: sudo chown -R "$(whoami)" /tmp/renovate/
+
+      - name: Save repository cache
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/renovate/cache/renovate/repository
+          key: renovate-cache-${{ github.run_id }}-${{ github.run_attempt }}

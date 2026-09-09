@@ -1,0 +1,52 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# This repo's own caller for the reusable renovate workflow — dogfoods it by local
+# path (`$/.github/workflows/...`), so it always runs this repo's current definition
+# rather than a release pin. It runs the org's self-hosted Renovate bot against this
+# repository only: hourly, on demand, and immediately when a human ticks a checkbox in
+# the Dependency Dashboard issue or a Renovate PR body (a rebase/retry request).
+#
+# Org prerequisites (see README "renovate.yaml"): the "Renovate" App installed here,
+# exposed as the RENOVATE_CLIENT_ID variable + RENOVATE_PRIVATE_KEY secret, and this
+# repo excluded from the org-wide bot's autodiscoverFilter so only one bot runs here.
+
+name: Renovate
+
+on:
+  schedule:
+    # hourly, off the congested top of the hour (same convention as self-merge's
+    # `17 * * * *`)
+    - cron: "24 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry-run mode: empty (live), "extract", "lookup", or "full".'
+        required: false
+        default: ""
+        type: string
+      log-level:
+        description: Renovate log level.
+        required: false
+        default: info
+        type: choice
+        options:
+          - info
+          - debug
+  issues:
+    types: [edited]
+  pull_request:
+    types: [edited]
+
+# the App token does the privileged work; the caller grants nothing
+permissions: {}
+
+jobs:
+  renovate:
+    uses: $/.github/workflows/renovate.yaml
+    with:
+      app-client-id: ${{ vars.RENOVATE_CLIENT_ID }}
+      dry-run: ${{ inputs.dry-run || '' }}
+      log-level: ${{ inputs.log-level || 'info' }}
+    secrets:
+      app-private-key: ${{ secrets.RENOVATE_PRIVATE_KEY }}
