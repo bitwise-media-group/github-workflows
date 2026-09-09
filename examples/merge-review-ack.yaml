@@ -14,7 +14,8 @@
 # list in your merge.yaml caller, alongside your CI workflow name(s). No secret needed —
 # it does no privileged work; the completed run is the only signal.
 #
-# Pin @v2 to a release tag or full commit SHA — see README "Pinning".
+# Replace the all-zeros placeholder SHA with the full commit SHA of the release you want
+# (the # comment names it; Renovate keeps both current) — see README "Pinning".
 
 name: Merge Review Ack
 
@@ -27,4 +28,4 @@ permissions: {}
 
 jobs:
   ack:
-    uses: bitwise-media-group/github-workflows/.github/workflows/merge-review-ack.yaml@v2
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge-review-ack.yaml@0000000000000000000000000000000000000000 # v7.0.0 # x-release-please-version

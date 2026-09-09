@@ -6,7 +6,8 @@
 # workflows-sync`). When an issue is opened it is added to the shared org "Roadmap"
 # project, so every repo's issues collect in one board.
 #
-# Pin @v4 to a release tag or full commit SHA — see README "Pinning".
+# Replace the all-zeros placeholder SHA with the full commit SHA of the release you want
+# (the # comment names it; Renovate keeps both current) — see README "Pinning".
 #
 # Org prerequisites: the "Project Sync" App (organization projects read/write, issues
 # + pull-requests read) installed on all repositories, exposed as the
@@ -23,7 +24,7 @@ permissions: {}
 
 jobs:
   add:
-    uses: bitwise-media-group/github-workflows/.github/workflows/add-to-project.yaml@v4
+    uses: bitwise-media-group/github-workflows/.github/workflows/add-to-project.yaml@0000000000000000000000000000000000000000 # v7.0.0 # x-release-please-version
     with:
       project-url: https://github.com/orgs/bitwise-media-group/projects/1
       app-client-id: ${{ vars.ADD_TO_PROJECT_CLIENT_ID }}

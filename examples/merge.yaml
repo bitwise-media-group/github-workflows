@@ -25,7 +25,8 @@
 #   - org variable FF_MERGE_CLIENT_ID and org secret FF_MERGE_PRIVATE_KEY
 #   - the "FF Merge" App installed on this repo and in the ruleset bypass list
 #
-# Pin @v2 to a release tag or full commit SHA — see README "Pinning".
+# Replace the all-zeros placeholder SHA with the full commit SHA of the release you want
+# (the # comment names it; Renovate keeps both current) — see README "Pinning".
 name: Merge
 
 # issue_comment drives `/merge` and arms `/auto-merge`; workflow_run(completed) attempts
@@ -33,7 +34,7 @@ name: Merge
 # backstop. List in `workflows:` every workflow that must pass PLUS "Merge Review Ack"
 # (the companion caller that turns an approval into a merge attempt) — whichever finishes
 # last triggers the attempt, and ff-merge re-verifies all checks.
-on:
+on: # zizmor: ignore[dangerous-triggers] -- required: workflow_run gates auto-merge on CI; no PR code is checked out or run
   issue_comment:
     types: [created]
   workflow_run:
@@ -52,7 +53,7 @@ permissions: {}
 
 jobs:
   merge:
-    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@v2
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@0000000000000000000000000000000000000000 # v7.0.0 # x-release-please-version
     with:
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
       # merge-command: /merge     # default — the comment that merges now

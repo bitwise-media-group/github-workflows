@@ -340,9 +340,13 @@ A caller may mix a reusable-workflow job with normal jobs — e.g. a Go CLI keep
 
 ## Pinning
 
-The examples reference `@v2`, the floating major tag, which moves to each release in the v2.x line (a matching minor tag
-`@v2.1` moves too). Pin to a release tag (`@v2.1.0`) or a full commit SHA for stricter supply-chain guarantees;
-Dependabot and Renovate can bump either. Avoid `@main` except for short-lived testing.
+The examples pin every `uses:` to an all-zeros placeholder SHA with the release it stands for in a trailing comment
+(`@0000…0000 # v7.0.0`); replace the zeros with that release's full commit SHA (`git rev-parse v7.0.0`, or the commit
+listed on the release page) before the caller will run. Policy is a full SHA for every action, first-party included
+(this library's own zizmor config enforces it), and Renovate keeps the SHA and the version comment in step from there.
+The `# x-release-please-version` marker on each `uses:` line is for this repository's release automation, which rewrites
+the version comment in every release PR so the examples always name the release they document; drop it or keep it, the
+copied caller works either way. Avoid `@main` except for short-lived testing.
 
 ## Fast-forward merge: org setup
 
