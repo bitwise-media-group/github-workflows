@@ -311,12 +311,12 @@ The reusable workflows stay free of per-repo configuration by assuming a small c
 language boundary** — every repo provides the same canonical tasks and the workflows just run `mise run <task>`, with
 every toolchain installed from the same mise pins:
 
-- **mise tasks** — defined in a root `mise.toml`, or by the shared task library
-  ([`bitwise-media-group/make`](https://github.com/bitwise-media-group/make)) mounted as a submodule at `.mise/`: `lint`
-  (all check-mode static analysis: `prettier --check`, markdownlint, and for Go `go vet` / `govulncheck`), `build`,
-  `test` (emitting `coverage/cobertura-coverage.xml`, optionally `coverage/junit.xml`), and `e2e`. Define only the tasks
-  that do real work — CI discovers the task list and skips the rest; coverage is optional. A repo with no mise config
-  fails CI.
+- **mise tasks** — defined in a root `mise.toml`, or by the shared toolchain
+  ([`bitwise-media-group/toolchain`](https://github.com/bitwise-media-group/toolchain)) mounted as a submodule at
+  `.mise/`: `lint` (all check-mode static analysis: `prettier --check`, markdownlint, and for Go `go vet` /
+  `govulncheck`), `build`, `test` (emitting `coverage/cobertura-coverage.xml`, optionally `coverage/junit.xml`), and
+  `e2e`. Define only the tasks that do real work — CI discovers the task list and skips the rest; coverage is optional.
+  A repo with no mise config fails CI.
 - **Toolchains** — no `setup-go` / `setup-node` / `setup-uv`: the language runtimes (Go, Node, Python, uv) and every dev
   CLI (goreleaser, cosign, syft, the linters, …) are installed from the mise pins, sha256-verified against `mise.lock`
   and restored from the mise cache, so CI, release and local runs use identical versions. The tasks install their own
@@ -478,16 +478,16 @@ Store Connect → Team Keys; generate a new one and re-run the three `MACOS_NOTA
 
 ## Testing changes
 
-This repo dogfoods its own reusable workflows by local path: `self-ci.yaml` calls `ci.yaml` (which installs the pinned
-toolchain from the root `mise.toml` and runs the one task this repo defines, `lint`) and `self-release.yaml` calls
-`release.yaml` (no `.goreleaser.yaml`, so just the release-please cut plus the `vanity-tags` job). `self-security.yaml`
-stays a bespoke `actions`-only scan: the library has no compilable Go and no JS/TS product source, so an `actions`
-CodeQL pass is the whole surface. The `/merge` + auto-merge flows (`self-merge.yaml`), its fork-PR review-ack companion
-(`self-merge-review-ack.yaml`), and the merge notice (`self-merge-notice.yaml`) dogfood the rest. This repo's own
-dependency automation (action SHA pins, the mise toolchain lockfile, and the `.mise` submodule tag) is the org Renovate
-bot ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)). Validate a change
-to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA (`@your-branch`) and
-opening a PR there.
+This repo dogfoods its own reusable workflows by local path: `self-ci.yaml` calls `ci.yaml` (which installs the tools
+pinned by the `.mise/` toolchain submodule and runs the one task this repo defines, `lint`) and `self-release.yaml`
+calls `release.yaml` (no `.goreleaser.yaml`, so just the release-please cut plus the `vanity-tags` job).
+`self-security.yaml` stays a bespoke `actions`-only scan: the library has no compilable Go and no JS/TS product source,
+so an `actions` CodeQL pass is the whole surface. The `/merge` + auto-merge flows (`self-merge.yaml`), its fork-PR
+review-ack companion (`self-merge-review-ack.yaml`), and the merge notice (`self-merge-notice.yaml`) dogfood the rest.
+This repo's own dependency automation (action SHA pins, the mise toolchain lockfile, and the `.mise` submodule tag) is
+the org Renovate bot ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)).
+Validate a change to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA
+(`@your-branch`) and opening a PR there.
 
 ## Releasing this repo
 

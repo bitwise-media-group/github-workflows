@@ -2,16 +2,15 @@
 # SPDX-License-Identifier: MIT
 #
 # github-workflows consumes the shared toolchain (bitwise-media-group/toolchain)
-# as the .mise/ submodule: pinned tools + the markdown-lib task archetype come
-# from there, and the Makefile is a thin forwarder (.mise/mise.mk). zizmor is
-# the one repo-local tool (workflow security lint); repo-local tasks live in
-# tasks.toml (included after the archetype so its lint redefinition wins).
-# zizmor floats on "latest" with the real pin in the root mise.lock; the org
-# Renovate bot (bitwise-media-group/renovate-config) bumps it with
-# `mise lock --bump` under the release cooldown.
-
-[tools]
-"aqua:zizmorcore/zizmor" = "latest"
+# as the .mise/ submodule: mise loads its config.toml natively as
+# .mise/config.toml (pinned tools, incl. actionlint + zizmor, and the [vars]
+# knob defaults), and this file selects the task files. A Markdown/YAML repo
+# with nothing to build or test includes only common/ -- no archetype -- and
+# the Makefile is a thin forwarder (.mise/common/include.mk). Repo-local tasks
+# live in tasks.toml (included after common so its lint redefinition wins).
+# There is nothing to pin here: the org Renovate bot
+# (bitwise-media-group/renovate-config) bumps the submodule tag, which carries
+# every tool pin and its mise.lock.
 
 [task_config]
-includes = [".mise/tasks/markdown-lib.toml", "tasks.toml"]
+includes = [".mise/common/tasks.toml", "tasks.toml"]

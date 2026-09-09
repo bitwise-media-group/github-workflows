@@ -2,15 +2,20 @@
 # SPDX-License-Identifier: MIT
 #
 # github-workflows' repo-local tasks. This file is included after the
-# markdown-lib archetype, so the lint redefinition below wins: this repo is
-# nothing but workflows, so the canonical lint also runs actionlint and zizmor
-# on top of the archetype's license + prose checks.
+# toolchain's common/tasks.toml, so the lint redefinition below wins (task
+# merging is whole-task replacement): it repeats common's lint rollup and adds
+# a zizmor pass over the copy-paste callers in examples/, which are workflows
+# too but sit outside the .github/workflows tree lint-workflows sweeps. zizmor
+# only walks .github/workflows inside a directory input, hence the explicit
+# file glob (the non-workflow codeql-config.yaml is skipped as not auditable).
 
 [lint]
-description = "prose lint + license check + workflow lint (actionlint, zizmor)"
+description = "prose lint + license, container, shell and workflow checks, plus zizmor over examples/"
 run = [
   { task = "license-check" },
+  { task = "lint-containers" },
+  { task = "lint-shell" },
+  { task = "lint-workflows" },
   { task = "lint-prose" },
-  { task = "actionlint" },
-  "zizmor .github examples",
+  "zizmor --min-severity {{vars.zizmor_min_severity}} examples/*.yaml",
 ]
