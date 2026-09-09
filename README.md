@@ -22,10 +22,7 @@ action is pinned to a full commit SHA; the org Renovate bot
 | [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward merge — `/merge` now, or `/auto-merge` (comment/label) when approved + green                                               |
 | [`merge-review-ack.yaml`](#merge-review-ackyaml) | any      | companion to `merge.yaml` — lets fork PRs auto-merge promptly when approved after CI is green                                                                |
 | [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                                          |
-| [`dependabot-merge.yaml`](#dependabot-mergeyaml) | any      | auto-approves Dependabot minor/patch PRs and squash-merges them once CI is green                                                                             |
-| [`dependabot-dist.yaml`](#dependabot-distyaml)   | node     | rebuilds committed `dist/` on a Dependabot PR when a bundled-dep bump made CI's dist check go red                                                            |
 | [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                                                    |
-| [`update-tools.yaml`](#update-toolsyaml)         | any      | daily `mise lock --bump` under a release cooldown; version bumps land as one reviewed `fix(deps):` PR                                                        |
 
 Each workflow below lists its inputs, secrets, and the permission ceiling the **caller** must grant — a reusable
 workflow's jobs cannot exceed the permissions of the job that calls them. The snippet is the minimal caller; follow the
@@ -270,90 +267,6 @@ jobs:
 
 Full example: [`examples/merge-notice.yaml`](examples/merge-notice.yaml).
 
-### `dependabot-merge.yaml`
-
-_Any repo._ Auto-approves Dependabot **minor and patch** PRs, then **squash-merges** them into the base branch once
-every check on the head is green. Squash — not the fast-forward `/merge` uses — so queued Dependabot PRs merge without a
-rebase (and a CI rerun) between each one; only genuinely conflicting PRs wait for Dependabot's rebase. Major updates are
-never approved, so they wait for a human. Both the approval and the merge are done with the "FF Merge" App token, so
-approval works regardless of the org "Allow GitHub Actions to approve pull requests" setting (that only restricts
-`GITHUB_TOKEN`), and the App's ruleset bypass covers the rebase-only merge-method rule — the merge button stays dead for
-everyone else. The squash commit GitHub creates is web-flow-signed and single-parent (satisfying required-signatures and
-linear-history rules), titled with Dependabot's Conventional-Commit subject so release-please reads it unchanged. It
-triggers only on `workflow_run` — an event that adds no check run to the PR, so it leaves no skipped-job clutter — and
-reads the minor/patch-vs-major policy from the trailer in Dependabot's commit, only after verifying the head commit is
-authored by `dependabot[bot]` and carries a valid signature. Requires a
-[`.github/dependabot.yaml`](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates) so
-Dependabot opens PRs, and branch protection that requires PR review (so the approval sets the review decision) — the
-same assumption as the `/merge` flow.
-
-- **Inputs:** `app-client-id` (required; `vars.FF_MERGE_CLIENT_ID`), `update-types` (optional; JSON array of Dependabot
-  update types, default `["version-update:semver-patch", "version-update:semver-minor"]`).
-- **Secrets:** `app-private-key` — required (`secrets.FF_MERGE_PRIVATE_KEY`).
-- **Permissions (caller grants):** none — the App token does the privileged work, so the caller job sets
-  `permissions: {}`.
-- **Triggers (the caller owns it):** `workflow_run` (`completed`) listing your CI workflow name(s) — the reusable
-  workflow approves and squash-merges once they finish green. No `pull_request_target` (so no skipped-check clutter);
-  `check_suite` is _not_ used either — GitHub does not fire it for a repo's own Actions CI.
-
-```yaml
-on:
-  workflow_run:
-    workflows: ["CI"] # your CI workflow name(s) — all that must be green
-    types: [completed]
-permissions: {}
-jobs:
-  auto-merge:
-    uses: bitwise-media-group/github-workflows/.github/workflows/dependabot-merge.yaml@v2
-    with:
-      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
-    secrets:
-      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
-```
-
-Full example: [`examples/dependabot-merge.yaml`](examples/dependabot-merge.yaml).
-
-### `dependabot-dist.yaml`
-
-_Node Actions that commit `dist/`._ Closes the gap between a committed build artifact and Dependabot. A
-JavaScript/TypeScript Action ships its bundled `dist/`, and `ci.yaml` fails any PR whose committed `dist/` does not
-reproduce from `src/`. Dependabot bumps a bundled dependency but never runs the build task, so its PR lands with a stale
-`dist/` and CI goes red — and `dependabot-merge.yaml` waits for green, so the PR sticks. When a watched CI run for a
-`dependabot/` branch **fails**, this checks out the PR head, runs `mise run build`, and — only if `dist/` actually
-changed — commits the rebuilt bundle back to the PR branch as the "FF Merge" App. That push re-triggers CI (an App-token
-push does; a `GITHUB_TOKEN` push would be suppressed by loop-prevention), so the rerun reproduces `dist/` and goes
-green. It does **not** approve or merge: the rebuild commit makes the head a non-Dependabot commit, so
-`dependabot-merge.yaml` no longer auto-approves — a human approves the (production-dependency) bump and the existing App
-squash-merge finishes it. Dev-only bumps that don't touch `dist/` never fail CI, never reach this workflow, and keep
-auto-merging. Rebuilding runs the PR's dependency tree, so the write-capable App token is kept out of the build: it is
-minted first but the checkout persists no credentials, and the token appears only in the final push step, after the
-build has run.
-
-- **Inputs:** `app-client-id` (required; `vars.FF_MERGE_CLIENT_ID`), `node-version-file` (optional, default
-  `.node-version`), `paths` (optional; space-separated build-output path(s) to rebuild and commit, default `dist`).
-- **Secrets:** `app-private-key` — required (`secrets.FF_MERGE_PRIVATE_KEY`).
-- **Permissions (caller grants):** none — the App token does the privileged work, so the caller job sets
-  `permissions: {}`.
-- **Triggers (the caller owns it):** `workflow_run` (`completed`) listing your CI workflow name — the reusable workflow
-  filters to failed runs on `dependabot/` branches, so green runs and pushes to `main` are ignored.
-
-```yaml
-on:
-  workflow_run:
-    workflows: ["CI"] # your CI workflow name
-    types: [completed]
-permissions: {}
-jobs:
-  rebuild-dist:
-    uses: bitwise-media-group/github-workflows/.github/workflows/dependabot-dist.yaml@v4
-    with:
-      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
-    secrets:
-      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
-```
-
-Full example: [`examples/dependabot-dist.yaml`](examples/dependabot-dist.yaml).
-
 ### `add-to-project.yaml`
 
 _Any repo._ Adds the triggering issue (or PR) to a shared organisation **Projects v2** board — the org "Roadmap" — so
@@ -391,41 +304,6 @@ jobs:
 ```
 
 Full example: [`examples/add-to-project.yaml`](examples/add-to-project.yaml).
-
-### `update-tools.yaml`
-
-_Any repo whose mise tools float on fuzzy selectors (`"latest"`, `"lts"`) and are locked in a root `mise.lock`._
-Dependabot has no mise ecosystem, so this replaces it: `mise lock --bump` re-resolves the selectors against the newest
-releases that have aged past the cooldown (`MISE_MINIMUM_RELEASE_AGE`, from `cooldown-days`) and rewrites the lockfile
-only — config files are never modified. Version changes land as a single `fix(deps):` PR on a stable bot branch
-(force-updated each run), so release-please cuts a patch when it merges. Only the **root** `mise.lock` is committed: in
-repos that mount the shared task library as a submodule at `.mise/`, the submodule's own lockfile is never touched here
-— shared-tool bumps belong to the library, which runs this same workflow itself. The bump commit is created through the
-GitHub API (`createCommitOnBranch`), so GitHub signs it server-side and it lands **verified** — satisfying a
-required-signatures rule that a runner-side `git commit` could never pass. Human-reviewed by design (supply-chain
-sensitive): the PR is never auto-merged. Supply a GitHub App so the branch update triggers the PR's CI; with the
-`GITHUB_TOKEN` fallback GitHub's recursion guard suppresses the checks.
-
-- **Inputs:** `cooldown-days` (default `"7"`), `branch` (default `bot/update-tools`), `app-client-id` (optional; App
-  that authors the bump commit so CI runs on the PR).
-- **Secrets:** `app-private-key` — required when `app-client-id` is set.
-- **Permissions (caller grants):** `contents: write`, `pull-requests: write`.
-- **Triggers (the caller owns it):** `schedule` (daily) plus `workflow_dispatch` with a `cooldown-days` input.
-
-```yaml
-on:
-  schedule:
-    - cron: "0 7 * * *"
-  workflow_dispatch:
-permissions:
-  contents: write
-  pull-requests: write
-jobs:
-  update:
-    uses: bitwise-media-group/github-workflows/.github/workflows/update-tools.yaml@v6
-```
-
-Full example: [`examples/update-tools.yaml`](examples/update-tools.yaml).
 
 ## Consumer contracts
 
@@ -466,10 +344,9 @@ Dependabot and Renovate can bump either. Avoid `@main` except for short-lived te
 
 ## Fast-forward merge: org setup
 
-`merge.yaml` (the `/merge` + auto-merge flows) drives the `bitwise-media-group/ff-merge` action; `dependabot-merge.yaml`
-squash-merges directly with the same App token and ruleset bypass; `merge-notice.yaml` posts the companion convention
-reminder. The one-time org setup (the "FF Merge" GitHub App, its ruleset bypass, and the `FF_MERGE_CLIENT_ID` variable +
-`FF_MERGE_PRIVATE_KEY` secret) is documented in
+`merge.yaml` (the `/merge` + auto-merge flows) drives the `bitwise-media-group/ff-merge` action; `merge-notice.yaml`
+posts the companion convention reminder. The one-time org setup (the "FF Merge" GitHub App, its ruleset bypass, and the
+`FF_MERGE_CLIENT_ID` variable + `FF_MERGE_PRIVATE_KEY` secret) is documented in
 [`bitwise-media-group/ff-merge`](https://github.com/bitwise-media-group/ff-merge).
 
 > **Note on App input names.** This library's contract is input `app-client-id` + secret `app-private-key`, backed by
@@ -602,10 +479,9 @@ stays a bespoke `actions`-only scan: the library has no compilable Go and no JS/
 CodeQL pass is the whole surface. The `/merge` + auto-merge flows (`self-merge.yaml`), its fork-PR review-ack companion
 (`self-merge-review-ack.yaml`), and the merge notice (`self-merge-notice.yaml`) dogfood the rest. This repo's own
 dependency automation (action SHA pins, the mise toolchain lockfile, and the `.mise` submodule tag) is the org Renovate
-bot ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)) — the reusable
-`dependabot-merge.yaml` / `dependabot-dist.yaml` / `update-tools.yaml` remain for consumers still on Dependabot.
-Validate a change to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA
-(`@your-branch`) and opening a PR there.
+bot ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)). Validate a change
+to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA (`@your-branch`) and
+opening a PR there.
 
 ## Releasing this repo
 

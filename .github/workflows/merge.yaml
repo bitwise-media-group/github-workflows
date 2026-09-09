@@ -31,7 +31,7 @@
 # is captured out-of-band by the companion merge-review-ack.yaml (its one job is the
 # only PR-attached check the system creates) and re-enters here as a workflow_run. No
 # pull_request_target is used or needed — that lives only in the separate
-# dependabot-merge.yaml and merge-notice.yaml.
+# merge-notice.yaml.
 #
 # Approval re-entry also closes a fork-PR gap: pull_request_review carries no secrets on
 # a fork, so an approval there can never mint a token directly. Routing every approval
@@ -111,7 +111,7 @@ on:
 
 # every job authenticates with the App token; the job GITHUB_TOKENs are not used, so
 # callers keep permissions: {}. Ref moves are serialized per repo at the job level
-# (group ff-merge-<repo>, shared with dependabot-merge.yaml) so two merges can't race.
+# (group ff-merge-<repo>) so two merges can't race.
 permissions: {}
 
 jobs:
