@@ -519,7 +519,11 @@ Application**, profile type **G2 Sub-CA**, upload `$dir/$name.certSigningRequest
 # p12 = leaf + key. quill attaches Apple's Developer ID G2 chain itself, so no
 # `quill p12 attach-chain`; OpenSSL 3's default PBES2/AES-256 encryption decodes
 # fine, so do NOT pass -legacy. `-in` needs PEM, hence the DER conversion first.
-openssl x509 -inform der -in developerID_installer.cer -out "$dir/$name.crt"
+openssl x509 -inform der -in developerID_application.cer -out "$dir/$name.crt"
+# sanity check: the subject must read "Developer ID Application: ..." — a
+# Developer ID *Installer* certificate carries a critical extension
+# (1.2.840.113635.100.6.1.14) quill rejects with "x509: unhandled critical extension"
+openssl x509 -in "$dir/$name.crt" -noout -subject
 password=$(openssl rand -base64 24)
 openssl pkcs12 -export -inkey "$dir/$name.key" -in "$dir/$name.crt" -name "$name" \
   -out "$dir/$name.p12" -passout "pass:$password"
