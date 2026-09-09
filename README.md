@@ -16,8 +16,8 @@ action is pinned to a full commit SHA; the org Renovate bot
 
 | Workflow                                         | Platform | What it does                                                                                                                                                 |
 | ------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`ci.yaml`](#ciyaml)                             | any      | canonical mise tasks (lint/build/test) per job, committed `dist/` verified, toolchains by detection, Codecov upload                                          |
-| [`security.yaml`](#securityyaml)                 | any      | CodeQL over actions + go (autobuild) + javascript-typescript, language matrix by detection                                                                   |
+| [`ci.yaml`](#ciyaml)                             | any      | canonical mise tasks (lint/build/test) per job, committed `dist/` verified, every toolchain from the mise pins, Codecov upload                               |
+| [`security.yaml`](#securityyaml)                 | any      | CodeQL over actions + go (autobuild, Go from the mise pins) + javascript-typescript, language matrix by detection                                            |
 | [`release.yaml`](#releaseyaml)                   | any      | release-please (two-pass) → GoReleaser (if `.goreleaser.yaml`; signed + notarized macOS binaries) + Zensical docs to Pages (if `zensical.toml`); vanity tags |
 | [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward merge — `/merge` now, or `/auto-merge` (comment/label) when approved + green                                               |
 | [`merge-review-ack.yaml`](#merge-review-ackyaml) | any      | companion to `merge.yaml` — lets fork PRs auto-merge promptly when approved after CI is green                                                                |
@@ -30,16 +30,15 @@ link beneath it for the fully-commented version.
 
 ### `ci.yaml`
 
-_Any repo._ Runs the canonical mise tasks — `lint`, `build`, `test` — as one parallel job each, sets up only the
-toolchains the repo has (a root `go.mod` → Go, `package.json` → Node), and uploads coverage to Codecov from a job
+_Any repo._ Runs the canonical mise tasks — `lint`, `build`, `test` — as one parallel job each, with every toolchain
+(Go, Node, Python, uv) and dev CLI installed from the repo's mise pins, and uploads coverage to Codecov from a job
 isolated from PR-built code. Tasks the repo does not define are skipped; a repo with no mise config at all fails. A repo
 that commits its build output has its `dist/` verified up to date after `mise run build` (so a stale committed artifact
 fails the PR). An opt-in `e2e` job runs `mise run e2e`. A caller may add product-specific jobs (e.g. `integration`)
 alongside the `ci` job.
 
-- **Inputs:** `go-version-file` (default `go.mod`), `node-version-file` (default `.node-version`),
-  `cache-dependency-path` (default `go.sum`; newline-separated lockfiles to key the module cache on), `e2e` (default
-  `false`).
+- **Inputs:** `e2e` (default `false`), `coverage` (default `true`; set `false` for repos that emit no coverage or test
+  results).
 - **Secrets:** none.
 - **Permissions (caller grants):** `contents: read`.
 
@@ -61,12 +60,11 @@ Full example: [`examples/ci.yaml`](examples/ci.yaml).
 ### `security.yaml`
 
 _Any repo._ CodeQL analysis whose language matrix is detected at the repo root: `actions` (build-free) always, plus `go`
-(via `autobuild`; `setup-go` matches `go-version-file`) when a root `go.mod` exists and `javascript-typescript`
-(build-free) when `package.json` exists.
+(via `autobuild`, compiling with the Go toolchain from the repo's mise pins) when a root `go.mod` exists and
+`javascript-typescript` (build-free) when `package.json` exists.
 
-- **Inputs:** `go-version-file` (default `go.mod`), `config-file` (optional, default none; pass
-  `./.github/codeql/codeql-config.yaml`, copy [`examples/codeql-config.yaml`](examples/codeql-config.yaml), to exclude a
-  bundled `dist/`).
+- **Inputs:** `config-file` (optional, default none; pass `./.github/codeql/codeql-config.yaml`, copy
+  [`examples/codeql-config.yaml`](examples/codeql-config.yaml), to exclude a bundled `dist/`).
 - **Secrets:** none.
 - **Permissions (caller grants):** `security-events: write`, `packages: read`, `actions: read`, `contents: read`.
 
@@ -94,15 +92,17 @@ Full example: [`examples/security.yaml`](examples/security.yaml).
 
 _Any repo._ Runs release-please (two-pass), then branches by detection: a repo with a `.goreleaser.yaml` runs GoReleaser
 (archives, checksums, SBOMs, cosign signatures, Developer ID-signed and notarized macOS binaries, optional Homebrew
-cask, SLSA attestation); every other repo's release is just the release-please cut. A repo with a `zensical.toml` also
-rebuilds its Zensical docs site (`uv run zensical build`) and publishes it to GitHub Pages — gated on an actual release
-and keyed off config presence exactly like the GoReleaser path, so it is independent of GoReleaser (a repo can ship
-binaries and docs from one release). With `vanity-tags: true` it also moves the floating major and minor tags (`v1` and
-`v1.1`). A committed `dist/` is verified for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
+cask, SLSA attestation) — Go, goreleaser, cosign and syft all come from the repo's mise pins, so the release is built by
+the same versions as `mise run release` locally; every other repo's release is just the release-please cut. A repo with
+a `zensical.toml` also rebuilds its Zensical docs site (`uv run zensical build`) and publishes it to GitHub Pages —
+gated on an actual release and keyed off config presence exactly like the GoReleaser path, so it is independent of
+GoReleaser (a repo can ship binaries and docs from one release). With `vanity-tags: true` it also moves the floating
+major and minor tags (`v1` and `v1.1`). A committed `dist/` is verified for freshness in [`ci.yaml`](#ciyaml) on every
+PR, not at release time.
 
-- **Inputs:** `go-version-file` (default `go.mod`), `vanity-tags` (default `false`; move the floating `v1` / `v1.1` tags
-  — set it for Actions/reusable repos whose consumers pin `@v1`), `app-client-id` (optional; author the release as a
-  GitHub App rather than `GITHUB_TOKEN` — `vars.FF_MERGE_CLIENT_ID`).
+- **Inputs:** `vanity-tags` (default `false`; move the floating `v1` / `v1.1` tags — set it for Actions/reusable repos
+  whose consumers pin `@v1`), `app-client-id` (optional; author the release as a GitHub App rather than `GITHUB_TOKEN` —
+  `vars.FF_MERGE_CLIENT_ID`).
 - **Secrets:** `homebrew-tap-token` — optional; only needed if `.goreleaser.yaml` publishes a Homebrew cask to another
   repo (`secrets.HOMEBREW_TAP_GITHUB_TOKEN`). `app-private-key` — optional; required only when `app-client-id` is set
   (`secrets.FF_MERGE_PRIVATE_KEY`). `macos-sign-p12`, `macos-sign-password`, `macos-notary-issuer-id`,
@@ -308,8 +308,8 @@ Full example: [`examples/add-to-project.yaml`](examples/add-to-project.yaml).
 ## Consumer contracts
 
 The reusable workflows stay free of per-repo configuration by assuming a small contract. The **mise config is the
-language boundary** — every repo provides the same canonical tasks and the workflows just run `mise run <task>`, setting
-up toolchains from the files at the repo root:
+language boundary** — every repo provides the same canonical tasks and the workflows just run `mise run <task>`, with
+every toolchain installed from the same mise pins:
 
 - **mise tasks** — defined in a root `mise.toml`, or by the shared task library
   ([`bitwise-media-group/make`](https://github.com/bitwise-media-group/make)) mounted as a submodule at `.mise/`: `lint`
@@ -317,12 +317,14 @@ up toolchains from the files at the repo root:
   `test` (emitting `coverage/cobertura-coverage.xml`, optionally `coverage/junit.xml`), and `e2e`. Define only the tasks
   that do real work — CI discovers the task list and skips the rest; coverage is optional. A repo with no mise config
   fails CI.
-- **Toolchain detection** — `setup-go` runs only when a **root `go.mod`** exists; `setup-node` only when `package.json`
-  exists (the tasks install their own deps, so the workflow sets up the toolchain but does not run `npm ci`). A
-  tools-only `go.work` + `tools/go.mod` (for `go tool addlicense`) is universal dev tooling, so it is **not** a
-  Go-product signal — only a root `go.mod` is.
-- **CodeQL** — scans `actions` always, `go` (autobuild, `setup-go` from `go-version-file`) when a root `go.mod` exists,
-  and `javascript-typescript` when `package.json` exists. A repo with a bundled `dist/` should pass
+- **Toolchains** — no `setup-go` / `setup-node` / `setup-uv`: the language runtimes (Go, Node, Python, uv) and every dev
+  CLI (goreleaser, cosign, syft, the linters, …) are installed from the mise pins, sha256-verified against `mise.lock`
+  and restored from the mise cache, so CI, release and local runs use identical versions. The tasks install their own
+  project dependencies (the workflow never runs `npm ci` or `go mod download` itself). A tools-only `go.work` with a
+  `tools/go.mod` (for `go tool addlicense`) is universal dev tooling, so it is **not** a Go-product signal for CodeQL —
+  only a root `go.mod` is.
+- **CodeQL** — scans `actions` always, `go` (autobuild, with the Go toolchain from the mise pins) when a root `go.mod`
+  exists, and `javascript-typescript` when `package.json` exists. A repo with a bundled `dist/` should pass
   `config-file: ./.github/codeql/codeql-config.yaml` (copy [`examples/codeql-config.yaml`](examples/codeql-config.yaml))
   to exclude it.
 - **Release** — `release-please-config.json` + `.release-please-manifest.json`; a `.goreleaser.yaml`

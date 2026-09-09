@@ -3,13 +3,12 @@
 
 # Reusable CI for any repo. Runs the canonical mise tasks -- lint, build, test --
 # as one parallel job per task, then a Codecov upload isolated from PR-supplied
-# code. Language toolchains are set up only when their marker file is present at
-# the repo root: setup-go when go.mod (a Go product) exists, setup-node when
-# package.json exists (Go repos still use node for the doc linters), setup-uv
-# when pyproject.toml exists -- we standardise on uv for Python, and uv downloads
-# a matching interpreter on demand. mise is both the task runner and the source
-# of the pinned dev CLIs the tasks invoke. The repo's mise config is the
-# language boundary; this workflow never hard-codes go, npm, or uv.
+# code. mise is the task runner and the sole source of every toolchain and dev
+# CLI the tasks invoke: the language runtimes (go, node, python, uv) come from
+# the same pins as the linters, checksum-verified against the library's
+# mise.lock and restored from the mise-action cache. No setup-go / setup-node /
+# setup-uv -- the repo's mise config is the language boundary, and this workflow
+# never hard-codes go, npm, or uv.
 #
 # The consuming repo must provide a mise config -- a root mise.toml, or the
 # shared task library (bitwise-media-group/make) mounted at .mise/ -- defining
@@ -32,21 +31,6 @@ name: Reusable Continuous Integration
 on:
   workflow_call:
     inputs:
-      go-version-file:
-        description: File the Go version is read from (passed to setup-go).
-        required: false
-        default: go.mod
-        type: string
-      node-version-file:
-        description: File the Node version is read from (passed to setup-node).
-        required: false
-        default: .node-version
-        type: string
-      cache-dependency-path:
-        description: One or more go.sum lockfiles to key the module cache on (newline-separated).
-        required: false
-        default: go.sum
-        type: string
       e2e:
         description: Run the `e2e` task job. Off by default; e2e often needs services or secrets.
         required: false
@@ -62,8 +46,8 @@ on:
 permissions: {}
 
 jobs:
-  # One parallel job per canonical task. Each detects and sets up only the
-  # toolchains the repo actually has, then runs `mise run <task>`.
+  # One parallel job per canonical task. Each installs the repo's mise pins,
+  # then runs `mise run <task>`.
   tasks:
     name: ${{ matrix.target }}
     strategy:
@@ -81,48 +65,17 @@ jobs:
           persist-credentials: false # read-only checkout; don't leave the token in .git/config
           submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/; a no-op where no submodule exists
 
-      # A root go.mod marks a repo that builds Go -- set up from it, cached on
-      # go.sum. Non-Go repos need no setup-go: the pinned dev CLIs that the
-      # lint task runs (addlicense, tflint, ...) install as prebuilt binaries
-      # via mise below, and the one source-built tool (govulncheck) compiles
-      # with the Go toolchain mise itself provisions from its pins.
-      - name: Setup go
-        if: hashFiles('go.mod')
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: ${{ inputs.go-version-file }}
-          cache: true
-          cache-dependency-path: ${{ inputs.cache-dependency-path }}
-
-      # node only for repos that build Node (the prose linters -- prettier,
-      # markdownlint-cli2 -- come from mise with its own pinned Node runtime).
-      - name: Setup node
-        if: hashFiles('package.json')
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: ${{ inputs.node-version-file }}
-          cache: npm
-
-      # uv is our Python toolchain -- gate on pyproject.toml (every uv project has
-      # one). uv reads requires-python / .python-version and downloads a matching
-      # interpreter on demand when a task runs `uv run` / `uv sync`; the cache
-      # is keyed on the lockfiles. No setup-python: we standardise on uv.
-      - name: Setup uv
-        if: hashFiles('pyproject.toml')
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          enable-cache: true
-
-      # mise installs the pinned dev CLIs the tasks run, verifying each
+      # mise installs everything the tasks run -- the language toolchains (go,
+      # node, python, uv) and the pinned dev CLIs alike -- verifying each
       # download's sha256 (and provenance, where published) against the
       # library's mise.lock (`--locked` is added automatically). The whole
       # toolset is installed eagerly and cached keyed on the config hash, so
-      # after the first run per pin-set this restores from cache. Gated on a
-      # config existing at the repo root (a root mise.toml, or the library
-      # mounted at .mise/ -- both resolve from the workspace root); a repo with
-      # neither fails the task-detection step below with a clear error.
+      # after the first run per pin-set this restores from cache; the action
+      # also exports the tools' bin directories onto PATH for later steps. The
+      # config lives at the repo root (a root mise.toml, or the library mounted
+      # at .mise/ -- both resolve from the workspace root); a repo with neither
+      # fails the task-detection step below with a clear error.
       - name: Setup mise
-        if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: v2026.9.1
@@ -253,30 +206,8 @@ jobs:
           persist-credentials: false # read-only checkout; don't leave the token in .git/config
           submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/; a no-op where no submodule exists
 
-      - name: Setup go
-        if: hashFiles('go.mod')
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: ${{ inputs.go-version-file }}
-          cache: true
-          cache-dependency-path: ${{ inputs.cache-dependency-path }}
-
-      - name: Setup node
-        if: hashFiles('package.json')
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: ${{ inputs.node-version-file }}
-          cache: npm
-
-      - name: Setup uv
-        if: hashFiles('pyproject.toml')
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          enable-cache: true
-
-      # See the tasks job's Setup mise step: pinned dev CLIs install via mise.
+      # See the tasks job's Setup mise step: toolchains and dev CLIs install via mise.
       - name: Setup mise
-        if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: v2026.9.1

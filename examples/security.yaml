@@ -34,5 +34,4 @@ jobs:
   analyze:
     uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@v2
     # with:
-    #   go-version-file: go.mod                          # default
     #   config-file: ./.github/codeql/codeql-config.yaml # a repo with a bundled dist/ should exclude it

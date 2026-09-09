@@ -51,11 +51,6 @@ name: Reusable Release
 on:
   workflow_call:
     inputs:
-      go-version-file:
-        description: File the Go version is read from (passed to setup-go).
-        required: false
-        default: go.mod
-        type: string
       vanity-tags:
         description: >-
           Move the floating major and minor tags (v1 and v1.1) to the release commit, for any release type. Off by
@@ -291,48 +286,29 @@ jobs:
           ref: ${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0 # GoReleaser needs full history + tags for the changelog
           persist-credentials: false # GoReleaser publishes via the GITHUB_TOKEN env, not the persisted credential
-          submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins the SBOM step below installs syft from; a no-op where no submodule exists
+          submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins provide the release toolchain below; a no-op where the config is a root mise.toml
 
-      - name: Setup go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: ${{ inputs.go-version-file }}
-          # No build cache in the release-signing job: a cache poisoned from a
-          # less-trusted context must not feed the signed, attested artifacts.
-          cache: false
-
-      # cosign for the binary_signs keyless signing config.
-      - name: Setup cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-
-      # GoReleaser's sboms config shells out to `syft`. Install just syft from the
-      # shared library's mise pins -- sha256 checksum and provenance verified
-      # against its mise.lock (`--locked` is added automatically), the same pins
-      # the local snapshot/release tasks use -- and put it on PATH. The config
-      # lives at the repo root (mise.toml, or the library mounted at
-      # .mise/config.toml). Skipped where neither exists: a repo not yet on the
-      # library still invokes syft from its own tools/go.mod via its sboms config.
+      # The whole release toolchain comes from the repo's mise pins -- the Go
+      # toolchain GoReleaser builds with, goreleaser itself, cosign for the
+      # binary_signs keyless signing config, and syft for the sboms config -- so
+      # the release is built by exactly the versions the local snapshot/release
+      # tasks use. Each download's sha256 (and provenance, where published) is
+      # verified against mise.lock (`--locked` is added automatically); only
+      # these four are installed, not the full lint toolset. The action puts
+      # their bin directories on PATH for the goreleaser step, outside the
+      # workspace, so nothing trips GoReleaser's git-dirty check.
       - name: Setup mise
-        if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: v2026.9.1
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
           sha256: c98423c8470d6dc416d9f7036d0646d8ef5ae92ad9186907f8fcc84cbe7db4ea
-          install_args: aqua:anchore/syft
-          # no cache in the release-signing job: a cache poisoned from a
-          # less-trusted context must not feed the signed, attested artifacts
+          install_args: go aqua:goreleaser/goreleaser aqua:sigstore/cosign aqua:anchore/syft
+          # no cache in the release-signing job (neither mise's tool cache nor a
+          # Go build cache): a cache poisoned from a less-trusted context must
+          # not feed the signed, attested artifacts
           cache: false
-
-      # The shim lives in $RUNNER_TEMP, never the workspace: an untracked
-      # directory in the checkout fails GoReleaser's git-dirty check.
-      - name: Setup syft
-        if: ${{ hashFiles('mise.toml') || hashFiles('.mise/config.toml') }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/bin"
-          ln -sf "$(mise which syft)" "$RUNNER_TEMP/bin/syft"
-          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       # Container images (a repo with a dockers_v2 config in .goreleaser.yaml):
       # buildx with a docker-container driver for multi-platform manifests, QEMU
@@ -356,11 +332,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # goreleaser is the mise-pinned binary installed above (no
+      # goreleaser-action, no floating `latest`), so the release is cut by the
+      # same version as `mise run release` locally.
       - name: Create release (goreleaser)
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with:
-          version: latest
-          args: release --clean
+        run: goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # PAT with write access to the Homebrew tap -- the default GITHUB_TOKEN
@@ -369,8 +345,8 @@ jobs:
           # Developer ID certificate + App Store Connect API key for a
           # .goreleaser.yaml `notarize.macos` block: goreleaser's embedded quill
           # signs and notarizes the darwin binaries in-process, on this Linux
-          # runner (no macOS runner, no Pro licence; `version: latest` above is
-          # past the v2.5 that introduced it). Empty values are harmless --
+          # runner (no macOS runner, no Pro licence; the mise pin is past the
+          # v2.5 that introduced it). Empty values are harmless --
           # goreleaser's isEnvSet treats an empty variable as unset, and a config
           # without a notarize block never reads them. The two base64 values are
           # single-line so GitHub's secret masking covers them in the log.
@@ -451,11 +427,19 @@ jobs:
           # pull Git LFS objects so Zensical embeds real assets, not pointer files; a
           # no-op on repos that track nothing in LFS.
           lfs: true
+          submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins provide uv; a no-op where the config is a root mise.toml
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      # uv from the repo's mise pins (sha256-verified against mise.lock,
+      # `--locked` added automatically), on PATH for the build step. Nothing
+      # here is signed or attested, so the mise cache stays on.
+      - name: Setup mise (uv)
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          enable-cache: true
+          version: v2026.9.1
+          # sha256 of the linux-x64 mise binary for the version above, from the release's
+          # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
+          sha256: c98423c8470d6dc416d9f7036d0646d8ef5ae92ad9186907f8fcc84cbe7db4ea
+          install_args: aqua:astral-sh/uv
 
       # uv run resolves the locked deps (uv.lock) and the .python-version toolchain
       # on demand, then Zensical renders docs/ into ./site.

@@ -18,9 +18,10 @@
 # root or under .github/) -- its presence is how a consumer opts in. zizmor uploads
 # its own SARIF to code scanning and, in SARIF mode, never fails the run on findings.
 #
-# Go has no build-free mode, so autobuild observes a real `go build`; setup-go
-# installs the toolchain matched to go-version-file (default go.mod), never the
-# workflow.
+# Go has no build-free mode, so autobuild observes a real `go build`; the Go
+# toolchain comes from the repo's mise pins (a root mise.toml, or the shared
+# library mounted at .mise/), the same checksum-verified toolchain the repo's
+# own build task uses -- never a workflow-side setup-go.
 #
 # Runs via workflow_call from a thin caller (examples/security.yaml) that owns the
 # push/pull_request/schedule triggers and grants the analyze permissions.
@@ -29,11 +30,6 @@ name: Reusable Security Analysis
 on:
   workflow_call:
     inputs:
-      go-version-file:
-        description: File the Go version is read from (passed to setup-go for the go autobuild).
-        required: false
-        default: go.mod
-        type: string
       config-file:
         description:
           Path to a CodeQL config file (e.g. ./.github/codeql/codeql-config.yaml). Empty uses CodeQL defaults.
@@ -132,15 +128,26 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false # read-only checkout; don't leave the token in .git/config
+          # The go leg needs the mise config, which may live in the shared task
+          # library submodule at .mise/. Only that leg fetches it: the actions and
+          # javascript-typescript legs scan the tree as-is, and the submodule's
+          # own workflows and scripts are not this repo's to report on.
+          submodules: ${{ matrix.language == 'go' }}
 
-      # Match the module's Go toolchain so autobuild compiles the code the way
-      # the project does.
+      # Install just the Go toolchain from the repo's mise pins (sha256-verified
+      # against mise.lock, `--locked` added automatically) so autobuild compiles
+      # the code with the same toolchain the project's build task uses. The
+      # action puts go on PATH for the CodeQL steps below; the mise cache is
+      # keyed on the pins plus this install list.
       - if: matrix.language == 'go'
-        name: Setup go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        name: Setup mise (go)
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          go-version-file: ${{ inputs.go-version-file }}
-          cache: true
+          version: v2026.9.1
+          # sha256 of the linux-x64 mise binary for the version above, from the release's
+          # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
+          sha256: c98423c8470d6dc416d9f7036d0646d8ef5ae92ad9186907f8fcc84cbe7db4ea
+          install_args: go
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
