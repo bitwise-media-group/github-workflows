@@ -159,7 +159,7 @@ jobs:
           sudo chown -R 12021:0 /tmp/renovate/
 
       - name: Run renovate
-        uses: renovatebot/github-action@39b914146caeff8cd512e61c8992f1d5913af85c # v46.2.5
+        uses: renovatebot/github-action@37beffda261423addd537c33f2d126df7f6ffbab # v46.2.6
         with:
           configurationFile: renovate-config/${{ inputs.config-file }}
           token: ${{ steps.app-token.outputs.token }}
