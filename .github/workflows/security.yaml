@@ -143,10 +143,10 @@ jobs:
         name: Setup mise (go)
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.9.6
+          version: v2026.9.7
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: 04260a49d2cb7f46c91d3f90547f8486ba6c6c9e545b98e69b685cdcf0db8576
+          sha256: d479d7c0df37652ddfd6d1887ef92a67a17effc7ec4ac612f46845099f814c6f
           install_args: go
 
       - name: Initialize CodeQL
