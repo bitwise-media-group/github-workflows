@@ -318,7 +318,7 @@ jobs:
       # follow — so image-less repos skip all three.
       - name: Setup QEMU
         if: ${{ hashFiles('Dockerfile', 'Dockerfile.*') != '' }}
-        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Setup docker buildx
         if: ${{ hashFiles('Dockerfile', 'Dockerfile.*') != '' }}
