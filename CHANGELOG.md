@@ -1,5 +1,40 @@
 # Changelog
 
+## [7.0.0](https://github.com/bitwise-media-group/github-workflows/compare/v6.3.0...v7.0.0) (2026-09-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* the go-version-file, node-version-file and cache-dependency-path inputs are removed from ci.yaml, and go-version-file from security.yaml and release.yaml; callers passing them must drop them. Go now follows the mise pin (GOTOOLCHAIN=auto still honours a newer go.mod directive), and CI no longer restores setup-go's module/build cache or setup-node's npm cache.
+* dependabot-merge.yaml, dependabot-dist.yaml and update-tools.yaml no longer exist. Callers pinned to a commit SHA keep working; callers on a floating tag must move to Renovate or stay on v6.
+
+### Features
+
+* install every toolchain from the mise pins instead of setup-* actions ([4c2a63e](https://github.com/bitwise-media-group/github-workflows/commit/4c2a63edb3f510bee3d3aed7455ecc52a4ee38ae))
+* remove the dependabot-merge, dependabot-dist and update-tools workflows ([8db57bf](https://github.com/bitwise-media-group/github-workflows/commit/8db57bfb2ddd698c70a1c50f2300c0053dbf0f09))
+* **renovate:** add a per-repository renovate workflow ([6f8b860](https://github.com/bitwise-media-group/github-workflows/commit/6f8b86018f5ea41e6a20109d92268db6545d57d0))
+
+
+### Bug Fixes
+
+* **deps:** update codecov/codecov-action action to v7.1.0 ([#157](https://github.com/bitwise-media-group/github-workflows/issues/157)) ([2a01f25](https://github.com/bitwise-media-group/github-workflows/commit/2a01f25f42aec58fc5f7e7b91987a9447a5b3b46))
+* **deps:** update dependency jdx/mise to v2026.9.10 ([#162](https://github.com/bitwise-media-group/github-workflows/issues/162)) ([594fdad](https://github.com/bitwise-media-group/github-workflows/commit/594fdad627801dc223f96d7c84c360fbec8fa055))
+* **deps:** update dependency jdx/mise to v2026.9.2 ([#145](https://github.com/bitwise-media-group/github-workflows/issues/145)) ([76d694b](https://github.com/bitwise-media-group/github-workflows/commit/76d694b39e30f957a9b42a9690011bf8520d676e))
+* **deps:** update dependency jdx/mise to v2026.9.3 ([#146](https://github.com/bitwise-media-group/github-workflows/issues/146)) ([554776f](https://github.com/bitwise-media-group/github-workflows/commit/554776f51e76fb5e40eae944445a09192b295109))
+* **deps:** update dependency jdx/mise to v2026.9.4 ([#149](https://github.com/bitwise-media-group/github-workflows/issues/149)) ([86d38c0](https://github.com/bitwise-media-group/github-workflows/commit/86d38c03362a0b3356192fb2079edd0e91196809))
+* **deps:** update dependency jdx/mise to v2026.9.5 ([#150](https://github.com/bitwise-media-group/github-workflows/issues/150)) ([22634c5](https://github.com/bitwise-media-group/github-workflows/commit/22634c57f3ec380c48a3c1dc786665c0eebba7dd))
+* **deps:** update dependency jdx/mise to v2026.9.6 ([#152](https://github.com/bitwise-media-group/github-workflows/issues/152)) ([f364cf9](https://github.com/bitwise-media-group/github-workflows/commit/f364cf9324f0478c6347bc28df6a4d309b6428cc))
+* **deps:** update dependency jdx/mise to v2026.9.7 ([#153](https://github.com/bitwise-media-group/github-workflows/issues/153)) ([050cadd](https://github.com/bitwise-media-group/github-workflows/commit/050cadd0b06c0cd40ad29534310e9e660c2505bf))
+* **deps:** update dependency jdx/mise to v2026.9.8 ([#156](https://github.com/bitwise-media-group/github-workflows/issues/156)) ([114feaf](https://github.com/bitwise-media-group/github-workflows/commit/114feafbf987899508650b83073605aa5bee0a6f))
+* **deps:** update dependency jdx/mise to v2026.9.9 ([#158](https://github.com/bitwise-media-group/github-workflows/issues/158)) ([69f27ac](https://github.com/bitwise-media-group/github-workflows/commit/69f27ac8427ae252d384c9bf3d5a35a58ef4e459))
+* **deps:** update docker/setup-buildx-action action to v4.4.0 ([#159](https://github.com/bitwise-media-group/github-workflows/issues/159)) ([6e973dc](https://github.com/bitwise-media-group/github-workflows/commit/6e973dc69b27bf1544fb64dbfdf09dbb562affd9))
+* **deps:** update docker/setup-buildx-action action to v4.4.1 ([#161](https://github.com/bitwise-media-group/github-workflows/issues/161)) ([0dd307b](https://github.com/bitwise-media-group/github-workflows/commit/0dd307b4d05ba718876d5cd0c29d3a88b515d4d4))
+* **deps:** update docker/setup-qemu-action action to v4.4.0 ([#160](https://github.com/bitwise-media-group/github-workflows/issues/160)) ([c8b6c75](https://github.com/bitwise-media-group/github-workflows/commit/c8b6c758e7bdf21e4aee0d97b9a75c7b26792924))
+* **deps:** update github/codeql-action action to v4.38.0 ([#148](https://github.com/bitwise-media-group/github-workflows/issues/148)) ([8d84310](https://github.com/bitwise-media-group/github-workflows/commit/8d843100e815f00889d1bfc4b6cb51c81ec6fbdb))
+* **deps:** update renovatebot/github-action action to v46.2.6 ([#144](https://github.com/bitwise-media-group/github-workflows/issues/144)) ([43187f3](https://github.com/bitwise-media-group/github-workflows/commit/43187f322d94b75805b0ec83913b98c0f699b169))
+* **deps:** update renovatebot/github-action action to v46.3.0 ([#151](https://github.com/bitwise-media-group/github-workflows/issues/151)) ([a0f4d84](https://github.com/bitwise-media-group/github-workflows/commit/a0f4d8484e3c96ccecb9d4080b7409b3cbec67f5))
+* **deps:** update renovatebot/github-action action to v46.3.1 ([#154](https://github.com/bitwise-media-group/github-workflows/issues/154)) ([00fa0b0](https://github.com/bitwise-media-group/github-workflows/commit/00fa0b0df7d111d40c92a7baeadacc5f4e879135))
+
 ## [6.3.0](https://github.com/bitwise-media-group/github-workflows/compare/v6.2.0...v6.3.0) (2026-09-07)
 
 
