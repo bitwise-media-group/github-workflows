@@ -300,10 +300,10 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.9.10
+          version: v2026.9.11
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: f917e52216924ef0a8b4eca3f7004dfcff3b94665716ac5685fd53006a491eee
+          sha256: 6e39ee1ffa926a1f64814efbf1d26c3f617255e2a6ba6152e3c8a5135fa5a35f
           install_args: go aqua:goreleaser/goreleaser aqua:sigstore/cosign aqua:anchore/syft
           # no cache in the release-signing job (neither mise's tool cache nor a
           # Go build cache): a cache poisoned from a less-trusted context must
@@ -435,10 +435,10 @@ jobs:
       - name: Setup mise (uv)
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.9.10
+          version: v2026.9.11
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: f917e52216924ef0a8b4eca3f7004dfcff3b94665716ac5685fd53006a491eee
+          sha256: 6e39ee1ffa926a1f64814efbf1d26c3f617255e2a6ba6152e3c8a5135fa5a35f
           install_args: aqua:astral-sh/uv
 
       # uv run resolves the locked deps (uv.lock) and the .python-version toolchain
