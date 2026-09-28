@@ -78,10 +78,10 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.9.13
+          version: v2026.9.14
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: a72f49916b33ba952ba398046c5cc91a58238f0b718fee1d938206ef2af21c6d
+          sha256: 2b289d1b3074e0b1d3f95bad0bd78bbc517c1a5bcb020cbc1643d260f5d1a351
 
       # A repo defines only the canonical tasks that do real work -- there are
       # no no-op stubs -- so ask mise for the task list and skip the tasks this
@@ -210,10 +210,10 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.9.13
+          version: v2026.9.14
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: a72f49916b33ba952ba398046c5cc91a58238f0b718fee1d938206ef2af21c6d
+          sha256: 2b289d1b3074e0b1d3f95bad0bd78bbc517c1a5bcb020cbc1643d260f5d1a351
 
       # No task-existence gate here: e2e is opt-in (`e2e: true` in the caller),
       # so a repo that opts in without defining the task should fail loudly.
