@@ -76,7 +76,7 @@ jobs:
       # at .mise/ -- both resolve from the workspace root); a repo with neither
       # fails the task-detection step below with a clear error.
       - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
           version: v2026.10.0
           # sha256 of the linux-x64 mise binary for the version above, from the release's
@@ -208,7 +208,7 @@ jobs:
 
       # See the tasks job's Setup mise step: toolchains and dev CLIs install via mise.
       - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
           version: v2026.10.0
           # sha256 of the linux-x64 mise binary for the version above, from the release's
