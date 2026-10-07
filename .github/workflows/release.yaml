@@ -298,7 +298,7 @@ jobs:
       # their bin directories on PATH for the goreleaser step, outside the
       # workspace, so nothing trips GoReleaser's git-dirty check.
       - name: Setup mise
-        uses: jdx/mise-action@94c60b39bc2d90ab2f9bab27f38d3cc4812c1834 # v5.1.0
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: v2026.10.2
           # sha256 of the linux-x64 mise binary for the version above, from the release's
@@ -433,7 +433,7 @@ jobs:
       # `--locked` added automatically), on PATH for the build step. Nothing
       # here is signed or attested, so the mise cache stays on.
       - name: Setup mise (uv)
-        uses: jdx/mise-action@94c60b39bc2d90ab2f9bab27f38d3cc4812c1834 # v5.1.0
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: v2026.10.2
           # sha256 of the linux-x64 mise binary for the version above, from the release's
