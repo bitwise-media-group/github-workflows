@@ -1,5 +1,16 @@
 # Changelog
 
+## [7.0.1](https://github.com/bitwise-media-group/github-workflows/compare/v7.0.0...v7.0.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency jdx/mise to v2026.10.2 ([#185](https://github.com/bitwise-media-group/github-workflows/issues/185)) ([8bb7caa](https://github.com/bitwise-media-group/github-workflows/commit/8bb7caa5857499492db56e246161d4643f8f18c6))
+* **deps:** update dependency jdx/mise to v2026.10.3 ([#188](https://github.com/bitwise-media-group/github-workflows/issues/188)) ([0e16d4b](https://github.com/bitwise-media-group/github-workflows/commit/0e16d4bc630a97e0883e93e9ff014f282ac53809))
+* **deps:** update jdx/mise-action action to v5.1.0 ([#183](https://github.com/bitwise-media-group/github-workflows/issues/183)) ([c677240](https://github.com/bitwise-media-group/github-workflows/commit/c6772400f87ce63a2fc1cc2ece29f5b1b162b1b5))
+* **deps:** update jdx/mise-action action to v5.1.1 ([#186](https://github.com/bitwise-media-group/github-workflows/issues/186)) ([832d081](https://github.com/bitwise-media-group/github-workflows/commit/832d0813944c52f6b2526b8195d857095bc47dfd))
+* **deps:** update renovatebot/github-action action to v46.3.7 ([#187](https://github.com/bitwise-media-group/github-workflows/issues/187)) ([64a7ae4](https://github.com/bitwise-media-group/github-workflows/commit/64a7ae4eed188f2783e5473084500895f179bc92))
+
 ## [7.0.0](https://github.com/bitwise-media-group/github-workflows/compare/v6.3.0...v7.0.0) (2026-10-06)
 
 

@@ -53,7 +53,7 @@ permissions: {}
 
 jobs:
   merge:
-    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@0000000000000000000000000000000000000000 # v7.0.0 # x-release-please-version
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@0000000000000000000000000000000000000000 # v7.0.1 # x-release-please-version
     with:
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
       # merge-command: /merge     # default — the comment that merges now
