@@ -10,8 +10,11 @@
 #     ID-signed + notarized darwin binaries (goreleaser `notarize.macos`, when the
 #     caller passes the `macos-*` secrets), an optional Homebrew cask, and a
 #     GitHub build-provenance attestation over checksums.txt (plus digests.txt
-#     when the repo publishes container images via docker_digest), then adopts
-#     and publishes the draft release.
+#     when the repo publishes container images via docker_digest). GoReleaser
+#     fills the release-please draft but leaves it a draft; the job publishes it
+#     as its very last step, once every asset, the cask, and the attestations
+#     have landed. Releases are immutable once published, so anything that can
+#     fail must fail while the release is still a draft that can be retried.
 #   - A repo with a zensical.toml takes the `docs` job: it rebuilds the Zensical
 #     site (uv run zensical build) and publishes it to GitHub Pages. This is keyed
 #     off the same config-presence detection as the goreleaser path and is
@@ -69,16 +72,20 @@ on:
         required: false
         default: ""
         type: string
+      homebrew-tap:
+        description: >-
+          Name of the Homebrew tap repository, in the caller's own organisation, that .goreleaser.yaml pushes its
+          cask to. When the config declares homebrew_casks, the goreleaser job mints a short-lived token from the App
+          named by app-client-id (required in that case) scoped to contents + pull-requests write on this one
+          repository, so the App must be installed on it. Only used when .goreleaser.yaml publishes a cask.
+        required: false
+        default: homebrew-tap
+        type: string
     secrets:
       app-private-key:
         description: >-
           Private key for the App named by app-client-id (e.g. secrets.FF_MERGE_PRIVATE_KEY). Required when app-client-id
           is set; ignored otherwise.
-        required: false
-      homebrew-tap-token:
-        description: >-
-          PAT with write access to the Homebrew tap repository (secrets.HOMEBREW_TAP_GITHUB_TOKEN). Optional; only
-          needed if .goreleaser.yaml publishes a cask.
         required: false
       # Apple signing + notarization material for a .goreleaser.yaml with a
       # `notarize.macos` block. All five are org secrets, scoped to the repos that
@@ -332,16 +339,55 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Does .goreleaser.yaml push a Homebrew cask? Gates the tap token below so
+      # a repo without a cask never mints one. grep -q exits 0 on the first
+      # match even when the other candidate file is missing, and non-zero when
+      # neither file declares a cask. A cask can only be pushed with the App's
+      # token, so fail here -- before anything is built, signed or uploaded --
+      # when the caller declares one without an App or a tap.
+      - name: Detect homebrew cask
+        id: homebrew
+        env:
+          APP_CLIENT_ID: ${{ inputs.app-client-id }}
+          TAP: ${{ inputs.homebrew-tap }}
+        run: |
+          if grep -Eqs '^homebrew_casks:' .goreleaser.yaml .goreleaser.yml; then
+            if [ -z "$APP_CLIENT_ID" ] || [ -z "$TAP" ]; then
+              echo "::error::.goreleaser.yaml publishes a Homebrew cask, which needs app-client-id + app-private-key (and a homebrew-tap) to mint the tap token"
+              exit 1
+            fi
+            echo "cask=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The default GITHUB_TOKEN cannot push to another repository, so mint a
+      # short-lived installation token from the caller's App, scoped to the tap
+      # repository alone: contents to push the cask branch, pull-requests to open
+      # and (in the last step) merge its pull request. It expires within the hour
+      # and is revoked when the job ends -- nothing long-lived to rotate or let
+      # lapse.
+      - name: Mint a homebrew tap token
+        id: tap-token
+        if: steps.homebrew.outputs.cask
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ inputs.homebrew-tap }}
+          permission-contents: write
+          permission-pull-requests: write
+
       # goreleaser is the mise-pinned binary installed above (no
       # goreleaser-action, no floating `latest`), so the release is cut by the
-      # same version as `mise run release` locally.
+      # same version as `mise run release` locally. --draft overrides
+      # release.draft in the caller's config: the release stays a draft until
+      # the publish step at the end of this job.
       - name: Create release (goreleaser)
-        run: goreleaser release --clean
+        run: goreleaser release --clean --draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # PAT with write access to the Homebrew tap -- the default GITHUB_TOKEN
-          # cannot push the cask to another repository.
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.homebrew-tap-token }}
+          # the App's token scoped to the Homebrew tap (empty without a cask)
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ steps.tap-token.outputs.token }}
           # Developer ID certificate + App Store Connect API key for a
           # .goreleaser.yaml `notarize.macos` block: goreleaser's embedded quill
           # signs and notarizes the darwin binaries in-process, on this Linux
@@ -380,6 +426,40 @@ jobs:
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-checksums: ./dist/digests.txt
+
+      # Publish the release last. Releases are immutable once published (assets
+      # and tag frozen), so every step that can fail -- uploads, the cask push,
+      # the attestations -- runs while it is still a draft; a failure above
+      # leaves a draft that can be deleted and re-run rather than a
+      # half-shipped release that can never be fixed.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+
+      # Merge the cask only now that the release is public, so the tap never
+      # points at draft assets that 404. The caller's homebrew_casks pushes to
+      # the branch bot/<repo>-<tag> with pull_request enabled (bot/** is exempt
+      # from the org's fork-only ruleset), so the pull request is found by that
+      # head branch. Squash is the merge method the tap allows; it deletes the
+      # merged branch itself. A caller that still pushes the cask straight to
+      # main has no pull request here and gets a warning instead of a failure.
+      - name: Merge homebrew cask pull request
+        if: steps.homebrew.outputs.cask
+        env:
+          GH_TOKEN: ${{ steps.tap-token.outputs.token }}
+          TAP: ${{ github.repository_owner }}/${{ inputs.homebrew-tap }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -eu
+          branch="bot/${GITHUB_REPOSITORY#*/}-$TAG"
+          pr="$(gh pr list --repo "$TAP" --head "$branch" --state open --json number --jq '.[0].number // empty')"
+          if [ -z "$pr" ]; then
+            echo "::warning::no open cask pull request from $branch in $TAP; set homebrew_casks.repository.branch to $branch with pull_request.enabled in .goreleaser.yaml"
+            exit 0
+          fi
+          gh pr merge "$pr" --repo "$TAP" --squash
 
   # Build the Zensical documentation site and publish it to GitHub Pages -- the
   # zensical.toml counterpart to the goreleaser path. It only needs release-please

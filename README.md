@@ -103,19 +103,46 @@ PR, not at release time.
 
 - **Inputs:** `vanity-tags` (default `false`; move the floating `v1` / `v1.1` tags — set it for Actions/reusable repos
   whose consumers pin `@v1`), `app-client-id` (optional; author the release as a GitHub App rather than `GITHUB_TOKEN` —
-  `vars.FF_MERGE_CLIENT_ID`).
-- **Secrets:** `homebrew-tap-token` — optional; only needed if `.goreleaser.yaml` publishes a Homebrew cask to another
-  repo (`secrets.HOMEBREW_TAP_GITHUB_TOKEN`). `app-private-key` — optional; required only when `app-client-id` is set
-  (`secrets.FF_MERGE_PRIVATE_KEY`). `macos-sign-p12`, `macos-sign-password`, `macos-notary-issuer-id`,
-  `macos-notary-key-id`, `macos-notary-key` — optional; only read by a `.goreleaser.yaml` with a `notarize.macos` block
-  (`secrets.MACOS_SIGN_P12` / `MACOS_SIGN_PASSWORD` / `MACOS_NOTARY_ISSUER_ID` / `MACOS_NOTARY_KEY_ID` /
-  `MACOS_NOTARY_KEY`). All five are org secrets scoped to the notarizing repos — the shared open-source Developer ID
-  certificate and the team notary key — see [macOS notarization: org setup](#macos-notarization-org-setup).
+  `vars.FF_MERGE_CLIENT_ID`; required when `.goreleaser.yaml` publishes a Homebrew cask), `homebrew-tap` (default
+  `homebrew-tap`; the tap repository in the caller's org that the cask is pushed to).
+- **Secrets:** `app-private-key` — optional; required only when `app-client-id` is set (`secrets.FF_MERGE_PRIVATE_KEY`).
+  `macos-sign-p12`, `macos-sign-password`, `macos-notary-issuer-id`, `macos-notary-key-id`, `macos-notary-key` —
+  optional; only read by a `.goreleaser.yaml` with a `notarize.macos` block (`secrets.MACOS_SIGN_P12` /
+  `MACOS_SIGN_PASSWORD` / `MACOS_NOTARY_ISSUER_ID` / `MACOS_NOTARY_KEY_ID` / `MACOS_NOTARY_KEY`). All five are org
+  secrets scoped to the notarizing repos — the shared open-source Developer ID certificate and the team notary key — see
+  [macOS notarization: org setup](#macos-notarization-org-setup).
 - **Auto-merging release PRs:** set `app-client-id` + `app-private-key` (reuse the "FF Merge" App) so release-please
   authors the release PR as the App. A release PR whose branch is pushed by the default `GITHUB_TOKEN` does **not** emit
   `workflow_run` events — GitHub's recursion guard suppresses them — so [`merge.yaml`](#mergeyaml)'s auto-merge, which
   is keyed on `workflow_run`, never retriggers when its checks go green and the PR only lands on the hourly sweep.
   Authoring as the App restores the trigger. Skip both inputs if you don't auto-merge release PRs.
+- **Publishing a Homebrew cask:** when `.goreleaser.yaml` declares `homebrew_casks`, the GoReleaser job mints a
+  short-lived installation token from that App scoped to `contents` + `pull-requests` write on the `homebrew-tap`
+  repository alone, and hands it to GoReleaser as `HOMEBREW_TAP_GITHUB_TOKEN` — no long-lived PAT to rotate or let
+  expire mid-release. The cask goes to the tap as a **pull request** from the branch `bot/<repo>-<tag>`, which the job
+  squash-merges only after the release is published, so the tap never points at draft assets. One-time setup: install
+  the App (the FF Merge App, for the org's repos) on the tap repository. There is no PAT path: a caller that declares a
+  cask without `app-client-id` fails before anything is built. The caller's cask config:
+
+  ```yaml
+  homebrew_casks:
+    - repository:
+        owner: bitwise-media-group
+        name: homebrew-tap
+        branch: bot/<repo>-{{ .Tag }} # the branch the workflow merges from
+        token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+        pull_request:
+          enabled: true
+          base:
+            owner: bitwise-media-group
+            name: homebrew-tap
+            branch: main
+  ```
+
+- **Publish last:** GoReleaser runs with `--draft`, filling the release-please draft without publishing it; the job's
+  final step publishes the release only after every asset, the cask push, and the attestations have succeeded. With
+  immutable releases a published release can never be amended, so a failure anywhere earlier leaves a draft to delete
+  and re-run instead of a permanently half-shipped release.
 - **Publishing docs:** add a `zensical.toml` (plus `pyproject.toml` + `uv.lock`) at the repo root and set **Settings →
   Pages → Source → GitHub Actions**. On each release the `docs` job runs `uv run zensical build` and deploys `./site` to
   Pages. It renders `docs/` only — no language build — so a repo whose docs embed generated reference (e.g. a CLI/man
@@ -149,8 +176,9 @@ jobs:
     uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@v2
     with:
       vanity-tags: true # for Actions/reusable repos pinned @v1
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }} # optional; also mints the Homebrew tap token
     secrets:
-      homebrew-tap-token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }} # optional
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }} # optional; required with app-client-id
 ```
 
 Full example: [`examples/release.yaml`](examples/release.yaml).
