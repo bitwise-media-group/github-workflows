@@ -177,8 +177,13 @@ jobs:
         if: always()
         run: sudo chown -R "$(whoami)" /tmp/renovate/
 
+      # Saved only from schedule / workflow_dispatch runs. An issues-triggered run (a
+      # dashboard checkbox) gets a read-only cache token on the default branch, so its
+      # save fails with "cache write denied"; a pull_request run would save under the
+      # PR's ref, a scope later default-branch runs cannot restore from. Both still
+      # restore above -- the cache just advances on the next scheduled run.
       - name: Save repository cache
-        if: always()
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/renovate/cache/renovate/repository
