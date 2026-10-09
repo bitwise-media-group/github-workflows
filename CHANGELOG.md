@@ -1,5 +1,21 @@
 # Changelog
 
+## [8.0.0](https://github.com/bitwise-media-group/github-workflows/compare/v7.0.1...v8.0.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** the homebrew-tap-token secret is removed from release.yaml; callers passing it must drop it. A .goreleaser.yaml that publishes a Homebrew cask now requires app-client-id + app-private-key, with the App installed on the tap repository, and should push the cask to bot/<repo>-{{ .Tag }} with pull_request enabled so the release workflow can merge it.
+
+### Features
+
+* **release:** push the homebrew cask with an app token and publish the release last ([408ba17](https://github.com/bitwise-media-group/github-workflows/commit/408ba17bd3db5ff63079986fcbda52f02bd7b98a))
+
+
+### Bug Fixes
+
+* **renovate:** save the repository cache only from trusted runs ([98a180b](https://github.com/bitwise-media-group/github-workflows/commit/98a180b221f8906f1af04c08717ff431a7c0d7b6))
+
 ## [7.0.1](https://github.com/bitwise-media-group/github-workflows/compare/v7.0.0...v7.0.1) (2026-10-08)
 
 

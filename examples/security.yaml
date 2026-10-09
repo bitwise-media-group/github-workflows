@@ -33,6 +33,6 @@ permissions:
 
 jobs:
   analyze:
-    uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@0000000000000000000000000000000000000000 # v7.0.1 # x-release-please-version
+    uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@0000000000000000000000000000000000000000 # v8.0.0 # x-release-please-version
     # with:
     #   config-file: ./.github/codeql/codeql-config.yaml # a repo with a bundled dist/ should exclude it

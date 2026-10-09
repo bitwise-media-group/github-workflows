@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   ci:
-    uses: bitwise-media-group/github-workflows/.github/workflows/ci.yaml@0000000000000000000000000000000000000000 # v7.0.1 # x-release-please-version
+    uses: bitwise-media-group/github-workflows/.github/workflows/ci.yaml@0000000000000000000000000000000000000000 # v8.0.0 # x-release-please-version
     # with:
     #   e2e: true       # also run the `e2e` task job (off by default)
     #   coverage: false # skip the Codecov upload for repos that emit no coverage/test results
