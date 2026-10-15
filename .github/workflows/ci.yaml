@@ -182,10 +182,13 @@ jobs:
           name: test-results
         continue-on-error: true
 
+      # codecov/test-results-action is deprecated (and its uploader validation
+      # now fails); codecov-action uploads JUnit via `report_type: test_results`.
       - name: Upload test results
         if: hashFiles('junit.xml')
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
+          report_type: test_results
           # the artifact holds only this one file; don't let the action walk the tree
           files: junit.xml
           disable_search: true
