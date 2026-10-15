@@ -141,7 +141,7 @@ jobs:
       # keyed on the pins plus this install list.
       - if: matrix.language == 'go'
         name: Setup mise (go)
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
         with:
           version: v2026.10.8
           # sha256 of the linux-x64 mise binary for the version above, from the release's
