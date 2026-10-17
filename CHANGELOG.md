@@ -1,5 +1,23 @@
 # Changelog
 
+## [8.0.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.0.0...v8.0.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **deps:** update actions ([#193](https://github.com/bitwise-media-group/github-workflows/issues/193)) ([4598a6a](https://github.com/bitwise-media-group/github-workflows/commit/4598a6adac2ad3682a93e2a5ce7dc7a7f07ba2f9))
+* **deps:** update actions/create-github-app-token action to v3.3.0 ([#204](https://github.com/bitwise-media-group/github-workflows/issues/204)) ([8f61fa6](https://github.com/bitwise-media-group/github-workflows/commit/8f61fa60a86f9d9d7f7016e16ca6fed82bac6aad))
+* **deps:** update dependency jdx/mise to v2026.10.10 ([#206](https://github.com/bitwise-media-group/github-workflows/issues/206)) ([300b4b2](https://github.com/bitwise-media-group/github-workflows/commit/300b4b24c62b4ed03c828729fcd6753a29e94e34))
+* **deps:** update dependency jdx/mise to v2026.10.4 ([#194](https://github.com/bitwise-media-group/github-workflows/issues/194)) ([2b4ae41](https://github.com/bitwise-media-group/github-workflows/commit/2b4ae41151de5219033b122924aab8ac5c6f6036))
+* **deps:** update dependency jdx/mise to v2026.10.5 ([#197](https://github.com/bitwise-media-group/github-workflows/issues/197)) ([0ebea76](https://github.com/bitwise-media-group/github-workflows/commit/0ebea7648cf1b5218e6f18431d841c6d37d5c3f4))
+* **deps:** update dependency jdx/mise to v2026.10.6 ([#198](https://github.com/bitwise-media-group/github-workflows/issues/198)) ([01edaf8](https://github.com/bitwise-media-group/github-workflows/commit/01edaf8b329965fd4585a5b5b9339852499575a7))
+* **deps:** update dependency jdx/mise to v2026.10.7 ([#199](https://github.com/bitwise-media-group/github-workflows/issues/199)) ([fa94c0e](https://github.com/bitwise-media-group/github-workflows/commit/fa94c0e9a18151a0ed4db1902e9bea42d3ffd618))
+* **deps:** update dependency jdx/mise to v2026.10.8 ([#200](https://github.com/bitwise-media-group/github-workflows/issues/200)) ([402abfa](https://github.com/bitwise-media-group/github-workflows/commit/402abfab8075de1f623a6934eb35ef41fb1c97b7))
+* **deps:** update dependency jdx/mise to v2026.10.9 ([#205](https://github.com/bitwise-media-group/github-workflows/issues/205)) ([16bae39](https://github.com/bitwise-media-group/github-workflows/commit/16bae39571efa700846aeb4c3c3992a7add5ae0e))
+* **deps:** update github/codeql-action action to v4.38.3 ([#196](https://github.com/bitwise-media-group/github-workflows/issues/196)) ([49e7a56](https://github.com/bitwise-media-group/github-workflows/commit/49e7a564615c9976a9dfec553824db045e899462))
+* **deps:** update jdx/mise-action action to v5.1.2 ([#202](https://github.com/bitwise-media-group/github-workflows/issues/202)) ([3f33e25](https://github.com/bitwise-media-group/github-workflows/commit/3f33e2545c7f21fffa1dfdaa5d782bc8b60216f5))
+* **deps:** update renovatebot/github-action action to v46.3.8 ([#201](https://github.com/bitwise-media-group/github-workflows/issues/201)) ([90adfbf](https://github.com/bitwise-media-group/github-workflows/commit/90adfbfdb92ffdaf6607acdb35093fbcf9bc06ec))
+
 ## [8.0.0](https://github.com/bitwise-media-group/github-workflows/compare/v7.0.1...v8.0.0) (2026-10-09)
 
 
