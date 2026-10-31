@@ -5,7 +5,8 @@
 # release PR current from the Conventional Commit history; when that PR merges it
 # cuts the GitHub release and vX.Y.Z tag. What happens next depends on the repo:
 #
-#   - A repo with a .goreleaser.yaml takes the `goreleaser` job: GoReleaser builds
+#   - A repo with a .goreleaser.yaml takes the `goreleaser` job: its `release`
+#     mise task (`mise run release --draft`, GoReleaser underneath) builds
 #     archives + checksums + SBOMs + keyless cosign signatures, Developer
 #     ID-signed + notarized darwin binaries (goreleaser `notarize.macos`, when the
 #     caller passes the `macos-*` secrets), an optional Homebrew cask, and a
@@ -15,10 +16,10 @@
 #     as its very last step, once every asset, the cask, and the attestations
 #     have landed. Releases are immutable once published, so anything that can
 #     fail must fail while the release is still a draft that can be retried.
-#   - A repo with a zensical.toml takes the `docs` job: it rebuilds the Zensical
-#     site (uv run zensical build) and publishes it to GitHub Pages. This is keyed
-#     off the same config-presence detection as the goreleaser path and is
-#     independent of it, so a repo can ship binaries AND publish docs from one
+#   - A repo with a zensical.toml takes the `docs` job: its `docs-build` mise
+#     task rebuilds the Zensical site and the job publishes it to GitHub Pages.
+#     This is keyed off the same config-presence detection as the goreleaser
+#     path and is independent of it, so a repo can ship binaries AND publish docs from one
 #     release. Callers must grant `pages: write` for it (see the permissions note
 #     below); the consuming repo must also set Settings -> Pages -> GitHub Actions.
 #   - Every other repo's release is just the release-please cut. A committed dist/
@@ -45,7 +46,9 @@
 # Go repos add a .goreleaser.yaml (release-type: go, draft: true); Actions repos that
 # commit dist/ set vanity-tags: true so their @v1/@v1.1 consumers track each release.
 # Repos that publish docs add a zensical.toml plus pyproject.toml + uv.lock at the
-# repo root (the docs job renders docs/ with `uv run zensical build`).
+# repo root (the docs job runs `mise run docs-build`). Both jobs run mise tasks, so
+# a repo customises its release or docs build by overriding `release` /
+# `docs-build` in its mise config rather than this workflow.
 #
 # Runs via workflow_call from a thin caller (examples/release.yaml) that owns the
 # push trigger and grants the release permissions.
@@ -293,17 +296,18 @@ jobs:
           ref: ${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0 # GoReleaser needs full history + tags for the changelog
           persist-credentials: false # GoReleaser publishes via the GITHUB_TOKEN env, not the persisted credential
-          submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins provide the release toolchain below; a no-op where the config is a root mise.toml
+          submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins and tasks drive the release below; a no-op where the config is a root mise.toml
 
       # The whole release toolchain comes from the repo's mise pins -- the Go
       # toolchain GoReleaser builds with, goreleaser itself, cosign for the
-      # binary_signs keyless signing config, and syft for the sboms config -- so
-      # the release is built by exactly the versions the local snapshot/release
-      # tasks use. Each download's sha256 (and provenance, where published) is
-      # verified against mise.lock (`--locked` is added automatically); only
-      # these four are installed, not the full lint toolset. The action puts
-      # their bin directories on PATH for the goreleaser step, outside the
-      # workspace, so nothing trips GoReleaser's git-dirty check.
+      # keyless signing config, syft for the sboms config, and whatever else
+      # the repo's `release` task calls -- so the release is built by exactly
+      # the versions `mise run release` uses locally. A plain install fetches
+      # the eager pins; the toolchain's lazy pins (goreleaser, cosign, syft, ...)
+      # install on first use inside the task. Every download's sha256 (and
+      # provenance, where published) is verified against mise.lock (`--locked`
+      # is added automatically). Tools land outside the workspace, so nothing
+      # trips GoReleaser's git-dirty check.
       - name: Setup mise
         uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
@@ -311,7 +315,6 @@ jobs:
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
           sha256: ccfe12d7a62c6fb9def2a20db1f210f13a51de881f21fd8c85db4b6312405d07
-          install_args: go aqua:goreleaser/goreleaser aqua:sigstore/cosign aqua:anchore/syft
           # no cache in the release-signing job (neither mise's tool cache nor a
           # Go build cache): a cache poisoned from a less-trusted context must
           # not feed the signed, attested artifacts
@@ -377,13 +380,24 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
-      # goreleaser is the mise-pinned binary installed above (no
-      # goreleaser-action, no floating `latest`), so the release is cut by the
-      # same version as `mise run release` locally. --draft overrides
-      # release.draft in the caller's config: the release stays a draft until
-      # the publish step at the end of this job.
-      - name: Create release (goreleaser)
-        run: goreleaser release --clean --draft
+      # The release runs through the repo's `release` mise task (the go and
+      # swift toolchain archetypes define it as `goreleaser release --clean`),
+      # so a repo customises its release by overriding the task, not this
+      # workflow. A .goreleaser.yaml without the task is a broken contract, so
+      # fail before anything is built rather than skip the release.
+      - name: Detect the release task
+        run: |
+          if ! mise tasks ls --name-only | grep -qxF release; then
+            echo "::error::.goreleaser.yaml exists but no 'release' mise task is defined -- include a toolchain archetype that provides it (go, swift) or define one"
+            exit 1
+          fi
+
+      # goreleaser is the mise-pinned binary (no goreleaser-action, no floating
+      # `latest`). --draft is appended to the task's goreleaser command and
+      # overrides release.draft in the caller's config: the release stays a
+      # draft until the publish step at the end of this job.
+      - name: Create release (mise run release)
+        run: mise run release --draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # the App's token scoped to the Homebrew tap (empty without a cask)
@@ -467,11 +481,12 @@ jobs:
   # two run in parallel; on a docs-only repo goreleaser is skipped and this runs
   # straight off release-please.
   #
-  # `uv run zensical build` re-renders docs/ into ./site with no language build: a
-  # repo whose docs embed generated reference (e.g. a committed CLI/man dump) ships
-  # that output, so this needs no toolchain beyond uv (it reads uv.lock +
-  # .python-version and provisions the interpreter on demand). The consuming repo
-  # must set Settings -> Pages -> Source -> GitHub Actions for the deploy to land.
+  # The site is built by the repo's `docs-build` mise task (the toolchain's common
+  # tasks define it as `uv sync` + `zensical build` into ./site), so a repo whose
+  # docs embed generated, uncommitted content -- a demo render, chart references --
+  # overrides the task to generate it first, and its tools come from the same
+  # mise pins. The consuming repo must set Settings -> Pages -> Source -> GitHub
+  # Actions for the deploy to land.
   #
   # Same trusted-trigger allowlist as goreleaser: this checks out a computed ref and
   # runs the repo's locked deps, so it is gated to vetted events and fails closed on
@@ -507,24 +522,33 @@ jobs:
           # pull Git LFS objects so Zensical embeds real assets, not pointer files; a
           # no-op on repos that track nothing in LFS.
           lfs: true
-          submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins provide uv; a no-op where the config is a root mise.toml
+          submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins and tasks build the site; a no-op where the config is a root mise.toml
 
-      # uv from the repo's mise pins (sha256-verified against mise.lock,
-      # `--locked` added automatically), on PATH for the build step. Nothing
+      # Everything docs-build needs from the repo's mise pins (sha256-verified
+      # against mise.lock, `--locked` added automatically): the eager pins
+      # install here, lazy ones such as uv on first use inside the task. Nothing
       # here is signed or attested, so the mise cache stays on.
-      - name: Setup mise (uv)
+      - name: Setup mise
         uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
           version: v2026.10.21
           # sha256 of the linux-x64 mise binary for the version above, from the release's
           # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
           sha256: ccfe12d7a62c6fb9def2a20db1f210f13a51de881f21fd8c85db4b6312405d07
-          install_args: aqua:astral-sh/uv
 
-      # uv run resolves the locked deps (uv.lock) and the .python-version toolchain
-      # on demand, then Zensical renders docs/ into ./site.
-      - name: Build site
-        run: uv run zensical build
+      # A zensical.toml without the task is a broken contract (every toolchain
+      # include provides docs-build), so fail rather than publish nothing.
+      - name: Detect the docs-build task
+        run: |
+          if ! mise tasks ls --name-only | grep -qxF docs-build; then
+            echo "::error::zensical.toml exists but no 'docs-build' mise task is defined -- include the toolchain's common tasks or define one"
+            exit 1
+          fi
+
+      # The repo's docs-build task renders the site into ./site (uv resolves the
+      # locked deps and the Python toolchain on demand).
+      - name: Build site (mise run docs-build)
+        run: mise run docs-build
 
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

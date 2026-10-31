@@ -4,10 +4,12 @@
 # Caller workflow -- copy to `.github/workflows/release.yaml` in any repo. It owns
 # the push trigger and grants the release permissions; the reusable release
 # workflow runs release-please (two-pass) then, when a .goreleaser.yaml exists,
-# GoReleaser (archives, checksums, SBOMs, cosign signatures, Developer ID-signed
-# + notarized macOS binaries when the macos-* secrets are passed, optional
-# Homebrew cask, SLSA attestation), and when a zensical.toml exists, rebuilds the docs site
-# and publishes it to GitHub Pages. With vanity-tags: true it moves the floating
+# the repo's `release` mise task -- GoReleaser (archives, checksums, SBOMs, cosign
+# signatures, Developer ID-signed + notarized macOS binaries when the macos-*
+# secrets are passed, optional Homebrew cask, SLSA attestation) -- and when a
+# zensical.toml exists, its `docs-build` mise task rebuilds the docs site, which
+# the workflow publishes to GitHub Pages. Override either task in the repo's mise
+# config to customise the release. With vanity-tags: true it moves the floating
 # v1 / v1.1 tags that consumers pin. A committed dist/ is verified in CI, not at
 # release.
 #

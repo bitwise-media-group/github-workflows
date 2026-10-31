@@ -14,16 +14,16 @@ All reusable workflows live in [`.github/workflows/`](.github/workflows/) and ar
 action is pinned to a full commit SHA; the org Renovate bot
 ([`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config)) keeps the pins fresh.
 
-| Workflow                                         | Platform | What it does                                                                                                                                                 |
-| ------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`ci.yaml`](#ciyaml)                             | any      | canonical mise tasks (lint/build/test) per job, committed `dist/` verified, every toolchain from the mise pins, Codecov upload                               |
-| [`security.yaml`](#securityyaml)                 | any      | CodeQL over actions + go (autobuild, Go from the mise pins) + javascript-typescript, language matrix by detection                                            |
-| [`release.yaml`](#releaseyaml)                   | any      | release-please (two-pass) → GoReleaser (if `.goreleaser.yaml`; signed + notarized macOS binaries) + Zensical docs to Pages (if `zensical.toml`); vanity tags |
-| [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward merge — `/merge` now, or `/auto-merge` (comment/label) when approved + green                                               |
-| [`merge-review-ack.yaml`](#merge-review-ackyaml) | any      | companion to `merge.yaml` — lets fork PRs auto-merge promptly when approved after CI is green                                                                |
-| [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                                          |
-| [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                                                    |
-| [`renovate.yaml`](#renovateyaml)                 | any      | per-repository Renovate run — the org bot's App, config and preset on this repo's own schedule, plus instant runs on a dashboard / PR checkbox tick          |
+| Workflow                                         | Platform | What it does                                                                                                                                                                 |
+| ------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`ci.yaml`](#ciyaml)                             | any      | canonical mise tasks (lint/build/test) per job, committed `dist/` verified, every toolchain from the mise pins, Codecov upload                                               |
+| [`security.yaml`](#securityyaml)                 | any      | CodeQL over actions + go (autobuild, Go from the mise pins) + javascript-typescript, language matrix by detection                                                            |
+| [`release.yaml`](#releaseyaml)                   | any      | release-please (two-pass) → `mise run release` (if `.goreleaser.yaml`; signed + notarized macOS binaries) + `mise run docs-build` to Pages (if `zensical.toml`); vanity tags |
+| [`merge.yaml`](#mergeyaml)                       | any      | signature-preserving fast-forward merge — `/merge` now, or `/auto-merge` (comment/label) when approved + green                                                               |
+| [`merge-review-ack.yaml`](#merge-review-ackyaml) | any      | companion to `merge.yaml` — lets fork PRs auto-merge promptly when approved after CI is green                                                                                |
+| [`merge-notice.yaml`](#merge-noticeyaml)         | any      | posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                                                          |
+| [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                                                                    |
+| [`renovate.yaml`](#renovateyaml)                 | any      | per-repository Renovate run — the org bot's App, config and preset on this repo's own schedule, plus instant runs on a dashboard / PR checkbox tick                          |
 
 Each workflow below lists its inputs, secrets, and the permission ceiling the **caller** must grant — a reusable
 workflow's jobs cannot exceed the permissions of the job that calls them. The snippet is the minimal caller; follow the
@@ -91,15 +91,15 @@ Full example: [`examples/security.yaml`](examples/security.yaml).
 
 ### `release.yaml`
 
-_Any repo._ Runs release-please (two-pass), then branches by detection: a repo with a `.goreleaser.yaml` runs GoReleaser
-(archives, checksums, SBOMs, cosign signatures, Developer ID-signed and notarized macOS binaries, optional Homebrew
-cask, SLSA attestation) — Go, goreleaser, cosign and syft all come from the repo's mise pins, so the release is built by
-the same versions as `mise run release` locally; every other repo's release is just the release-please cut. A repo with
-a `zensical.toml` also rebuilds its Zensical docs site (`uv run zensical build`) and publishes it to GitHub Pages —
-gated on an actual release and keyed off config presence exactly like the GoReleaser path, so it is independent of
-GoReleaser (a repo can ship binaries and docs from one release). With `vanity-tags: true` it also moves the floating
-major and minor tags (`v1` and `v1.1`). A committed `dist/` is verified for freshness in [`ci.yaml`](#ciyaml) on every
-PR, not at release time.
+_Any repo._ Runs release-please (two-pass), then branches by detection: a repo with a `.goreleaser.yaml` runs its
+`release` mise task, `mise run release --draft`, which runs GoReleaser (archives, checksums, SBOMs, cosign signatures,
+Developer ID-signed and notarized macOS binaries, optional Homebrew cask, SLSA attestation) — Go, goreleaser, cosign and
+syft all come from the repo's mise pins, so the release is built by the same versions as `mise run release` locally;
+every other repo's release is just the release-please cut. A repo with a `zensical.toml` also rebuilds its Zensical docs
+site (`mise run docs-build`) and publishes it to GitHub Pages — gated on an actual release and keyed off config presence
+exactly like the GoReleaser path, so it is independent of GoReleaser (a repo can ship binaries and docs from one
+release). With `vanity-tags: true` it also moves the floating major and minor tags (`v1` and `v1.1`). A committed
+`dist/` is verified for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
 
 - **Inputs:** `vanity-tags` (default `false`; move the floating `v1` / `v1.1` tags — set it for Actions/reusable repos
   whose consumers pin `@v1`), `app-client-id` (optional; author the release as a GitHub App rather than `GITHUB_TOKEN` —
@@ -144,9 +144,14 @@ PR, not at release time.
   immutable releases a published release can never be amended, so a failure anywhere earlier leaves a draft to delete
   and re-run instead of a permanently half-shipped release.
 - **Publishing docs:** add a `zensical.toml` (plus `pyproject.toml` + `uv.lock`) at the repo root and set **Settings →
-  Pages → Source → GitHub Actions**. On each release the `docs` job runs `uv run zensical build` and deploys `./site` to
-  Pages. It renders `docs/` only — no language build — so a repo whose docs embed generated reference (e.g. a CLI/man
-  dump) must commit that output. Nothing to configure beyond the file and the Pages source.
+  Pages → Source → GitHub Actions**. On each release the `docs` job runs `mise run docs-build` and deploys `./site` to
+  Pages. The toolchain's common tasks define `docs-build` as a plain Zensical build; a repo whose docs embed generated,
+  uncommitted content (a demo render, chart references) overrides the task to generate it first, with its tools from the
+  same mise pins.
+- **Customising the release:** both paths run mise tasks — `release` (the go and swift toolchain archetypes define it as
+  `goreleaser release --clean`; the workflow appends `--draft`) and `docs-build` — so a repo changes how it releases by
+  overriding the task, not the workflow. A `release` override must leave the git tree clean. A `.goreleaser.yaml` or
+  `zensical.toml` without its task fails the job.
 - **Signing and notarizing macOS binaries:** add a
   [`notarize.macos`](https://goreleaser.com/customization/sign/notarize/) block to `.goreleaser.yaml` and pass the five
   `macos-*` secrets. GoReleaser's embedded quill signs each darwin binary with the org's Developer ID certificate and
@@ -409,11 +414,11 @@ every toolchain installed from the same mise pins:
   `config-file: ./.github/codeql/codeql-config.yaml` (copy [`examples/codeql-config.yaml`](examples/codeql-config.yaml))
   to exclude it.
 - **Release** — `release-please-config.json` + `.release-please-manifest.json`; a `.goreleaser.yaml`
-  (`release-type: go`, `draft: true`) selects the GoReleaser path, otherwise the release is just the release-please cut.
-  A `zensical.toml` selects the docs path (rebuild the Zensical site and publish to Pages; needs Pages set to GitHub
-  Actions and `pages: write`). Set `vanity-tags: true` to move the floating `v1` / `v1.1` tags (after GoReleaser when
-  present); a committed `dist/` is verified in CI, not here. To sign and notarize macOS binaries, add a `notarize.macos`
-  block to `.goreleaser.yaml` and pass the `macos-*` secrets (see
+  (`release-type: go`, `draft: true`) selects the GoReleaser path, which runs `mise run release --draft`; otherwise the
+  release is just the release-please cut. A `zensical.toml` selects the docs path (`mise run docs-build`, then publish
+  `./site` to Pages; needs Pages set to GitHub Actions and `pages: write`). Set `vanity-tags: true` to move the floating
+  `v1` / `v1.1` tags (after GoReleaser when present); a committed `dist/` is verified in CI, not here. To sign and
+  notarize macOS binaries, add a `notarize.macos` block to `.goreleaser.yaml` and pass the `macos-*` secrets (see
   [macOS notarization: org setup](#macos-notarization-org-setup)).
 
 A caller may mix a reusable-workflow job with normal jobs — e.g. a Go CLI keeps its product-specific `integration` /
