@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.1.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.1.0...v8.1.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **deps:** update dependency jdx/mise to v2026.10.22 ([#233](https://github.com/bitwise-media-group/github-workflows/issues/233)) ([ce65cce](https://github.com/bitwise-media-group/github-workflows/commit/ce65cce88b86d9455a6c1ea7e4777661e3b3eb23))
+* **deps:** update dependency jdx/mise to v2026.10.23 ([#235](https://github.com/bitwise-media-group/github-workflows/issues/235)) ([6291405](https://github.com/bitwise-media-group/github-workflows/commit/6291405e66ccb21d294691d17acb00c017aac110))
+
 ## [8.1.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.0.1...v8.1.0) (2026-10-31)
 
 
