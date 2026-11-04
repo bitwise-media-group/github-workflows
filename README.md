@@ -146,6 +146,10 @@ release). With `vanity-tags: true` it also moves the floating major and minor ta
   final step publishes the release only after every asset, the cask push, and the attestations have succeeded. With
   immutable releases a published release can never be amended, so a failure anywhere earlier leaves a draft to delete
   and re-run instead of a permanently half-shipped release.
+- **Runner disk space:** the GoReleaser job starts by deleting the hosted runner's preinstalled SDKs that no mise-driven
+  release uses (Android, .NET, GHC, CodeQL, PowerShell) and pruning its cached Docker images, so a cold-cache,
+  many-target build with multi-platform images fits on `/`. Swift is left in place for the swift archetype. The step
+  logs `df -h /` before and after.
 - **Publishing docs:** add a `zensical.toml` (plus `pyproject.toml` + `uv.lock`) at the repo root and set **Settings →
   Pages → Source → GitHub Actions**. On each release the `docs` job runs `mise run docs-build` and deploys `./site` to
   Pages. The toolchain's common tasks define `docs-build` as a plain Zensical build; a repo whose docs embed generated,

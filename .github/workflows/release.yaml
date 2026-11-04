@@ -290,6 +290,35 @@ jobs:
       # push container images (a repo with a dockers_v2 config) to ghcr
       packages: write
     steps:
+      # Reclaim root-disk space before anything lands on it. A cold-cache build
+      # of every target plus multi-platform buildx images under QEMU (no Go or
+      # mise cache in this job, by design -- see Setup mise) can outgrow the
+      # free space a hosted runner leaves on / -- an unchanged release config
+      # that fit on ubuntu-24.04 died mid-build with "No space left on device"
+      # once ubuntu-latest moved to ubuntu-26.04, taking the runner's own log
+      # with it. Every tool this job runs comes from the repo's mise pins,
+      # so the preinstalled SDKs below are dead weight here (swift is kept: the
+      # swift archetype's release may build with it). Absent paths are no-ops,
+      # so image drift can only make this do less. The removals run in parallel
+      # (the android SDK alone takes minutes serially), and df brackets them so
+      # a future disk failure shows the headroom it started with in the log.
+      - name: Free runner disk space
+        run: |
+          set -eu
+          df -h /
+          for dir in \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/share/powershell; do
+            sudo rm -rf "$dir" &
+          done
+          wait
+          docker image prune --all --force > /dev/null
+          df -h /
+
       - name: Checkout repository at release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
