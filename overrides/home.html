@@ -1,0 +1,363 @@
+<!--
+ Copyright 2026 BitWise Media Group Ltd
+ SPDX-License-Identifier: MIT
+-->
+
+{#- overrides/home.html — custom landing for the github-workflows docs, on the toolchain landing's layout (hero, terminal
+showcase, marquee, connected feature grid, cards, steps) in the parent BitWise Media Group palette via the scheme-scoped
+--bw-* tokens in docs/stylesheets/extra.css. Injected full-bleed between the header and the page body via the `tabs`
+block; the article `content` block is emptied, index.md sets `hide: [navigation, toc]`, and extra.css drops the empty
+.md-content on this page.
+
+The workflow marquee, count and cards are read from the "Workflows" nav section (every entry but the catalogue), each
+card's blurb from that page's `description` front matter — so adding a workflow to zensical.toml is all the landing
+needs. -#}
+{% extends "main.html" %}
+{% block tabs %}
+{{ super() }}
+{%- set gw_section = nav.items | selectattr("title", "equalto", "Workflows") | first -%}
+{%- set gw_workflows = gw_section.children | rejectattr("title", "equalto", "Catalogue") | list %}
+<div class="gw">
+    <!-- HERO -->
+    <header class="gw-hero">
+        <div class="gw-hero__grid"></div>
+        <div class="gw-hero__glow"></div>
+        <img class="gw-hero__mark" src="{{ 'assets/logo-mark.svg' | url }}" alt="" aria-hidden="true" />
+        <div class="gw-hero__inner">
+            <div class="gw-kicker"><span class="gw-dot"></span>// Reusable GitHub Actions for BitWise Media Group</div>
+            <h1 class="gw-title">One library.<br /><em>Every repo's pipeline.</em></h1>
+            <p class="gw-lede">
+                CI, CodeQL, releases, signature-preserving merges, Renovate and project sync are written once here.
+                Every repository runs them from a short caller that sets the triggers and permissions, and every
+                toolchain comes from the same mise pins you use locally.
+            </p>
+            <div class="gw-term">
+                <div class="gw-term__bar">
+                    <span class="gw-dots"><i></i><i></i><i></i></span><span>zsh — what CI runs is what you run</span>
+                </div>
+                <div class="gw-copy">
+                    <span class="gw-p">$</span>
+                    <code>mise run lint</code>
+                    <div class="md-code__nav">
+                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
+                            aria-label="Copy to clipboard"></button>
+                    </div>
+                </div>
+                <div class="gw-copy">
+                    <span class="gw-p">$</span>
+                    <code>mise run build</code>
+                    <div class="md-code__nav">
+                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
+                            aria-label="Copy to clipboard"></button>
+                    </div>
+                </div>
+                <div class="gw-copy">
+                    <span class="gw-p">$</span>
+                    <code>mise run test</code>
+                    <div class="md-code__nav">
+                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
+                            aria-label="Copy to clipboard"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="gw-cta">
+                <a class="gw-btn gw-btn--primary" href="{{ 'getting-started/' | url }}">
+                    Get started
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 12h14" />
+                        <path d="m12 5 7 7-7 7" />
+                    </svg>
+                </a>
+                <a class="gw-btn gw-btn--secondary" href="{{ 'workflows/' | url }}">The catalogue</a>
+                <a class="gw-btn gw-btn--ghost" href="{{ config.repo_url }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path
+                            d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 4 5 4 5 4c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 11c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+                        <path d="M9 18c-4.51 2-5-2-7-2" />
+                    </svg>
+                    Browse the code
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- TERMINAL SHOWCASE -->
+    <section class="gw-shot">
+        <div class="gw-shot__frame">
+            <div class="gw-shot__bar">
+                <span class="gw-dots"><i></i><i></i><i></i></span>
+                <span class="gw-title-sm">your-repo · pull request</span>
+                <span class="gw-live">● Continuous Integration</span>
+            </div>
+            <div class="gw-panes">
+                <div class="gw-pane">
+                    <div class="gw-pane__head"><b>1</b><span>.github/workflows/ci.yaml</span></div>
+                    <div class="gw-pane__body gw-toml">
+                        <div><span class="s">on:</span></div>
+                        <div>&nbsp;&nbsp;<span class="k">push</span>: { <span class="k">branches</span>: [<span class="v">main</span>] }</div>
+                        <div>&nbsp;&nbsp;<span class="k">pull_request</span>: { <span class="k">branches</span>: [<span class="v">main</span>] }</div>
+                        <div><span class="s">permissions:</span></div>
+                        <div>&nbsp;&nbsp;<span class="k">contents</span>: <span class="v">read</span></div>
+                        <div><span class="s">jobs:</span></div>
+                        <div>&nbsp;&nbsp;<span class="k">ci</span>:</div>
+                        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="k">uses</span>: <span class="v">bitwise-media-group/github-workflows/</span></div>
+                        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">.github/workflows/ci.yaml@&lt;sha&gt;</span></div>
+                        <div class="gw-pane__sep"><span class="c"># triggers, permissions, pin: the whole caller</span></div>
+                    </div>
+                </div>
+                <div class="gw-pane">
+                    <div class="gw-pane__head"><b>2</b><span>Reusable Continuous Integration</span></div>
+                    <div class="gw-pane__body">
+                        <div class="gw-dim">mise install --locked <span class="gw-blink"></span></div>
+                        <div class="gw-run"><span class="t">lint</span><span class="d">prettier · markdownlint · actionlint · zizmor</span><span class="ok">✓</span></div>
+                        <div class="gw-run"><span class="t">build</span><span class="d">mise run build</span><span class="ok">✓</span></div>
+                        <div class="gw-run"><span class="t"></span><span class="d">committed dist/ is up to date</span><span class="ok">✓</span></div>
+                        <div class="gw-run"><span class="t">test</span><span class="d">mise run test · coverage/</span><span class="ok">✓</span></div>
+                        <div class="gw-run"><span class="t">coverage</span><span class="d">clean checkout → Codecov</span><span class="ok">✓</span></div>
+                        <div class="gw-pane__sep gw-ok">→ approve, then /merge (signatures preserved)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="gw-shot__cap">
+            The repository keeps a <b>caller</b> that owns its triggers and permissions. The <b>reusable workflow</b>
+            does the work, with every tool installed from the repository's own mise pins.
+        </p>
+    </section>
+
+    <!-- MARQUEE -->
+    {#- The reusable workflows. Rendered twice so the translateX(-50%) scroll loops seamlessly; aria-hidden because it
+    is decorative and would otherwise be announced twice. -#}
+    <div class="gw-marquee" aria-hidden="true">
+        <div class="gw-marquee__track">
+            {% for i in [1, 2] %}{% for w in gw_workflows %}<span>{{ w.title }}</span>{% endfor %}{% endfor %}
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <section class="gw-stats-wrap">
+        <div class="gw-stats">
+            <div class="gw-stat"><b>{{ gw_workflows | length }}</b><small>reusable workflows</small></div>
+            <div class="gw-stat"><b>100%</b><small>SHA-pinned actions</small></div>
+            <div class="gw-stat"><b class="gw-ink">0</b><small>setup-go / node / uv steps</small></div>
+            <div class="gw-stat"><b class="gw-ink">0</b><small>long-lived PATs</small></div>
+        </div>
+    </section>
+
+    <!-- WHAT THE LIBRARY GIVES A REPO -->
+    <section class="gw-section">
+        <h2 class="gw-eyebrow">// WHAT EVERY REPOSITORY GETS</h2>
+        <p class="gw-lead">A few lines of caller in, the organisation's whole delivery pipeline out.</p>
+        <div class="gw-conn gw-grid-3">
+            <div class="gw-feat">
+                <div class="gw-glyph" style="background: var(--bw-orange)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                    </svg>
+                </div>
+                <h3>Thin callers</h3>
+                <p>
+                    A repository keeps only triggers, permissions and a SHA pin. Logic, action pins and fixes come from
+                    the library, and Renovate moves the pin on every release.
+                </p>
+            </div>
+            <div class="gw-feat">
+                <div class="gw-glyph" style="background: var(--bw-orange-2)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                    </svg>
+                </div>
+                <h3>mise is the boundary</h3>
+                <p>
+                    Workflows run <code>mise run lint</code>, <code>build</code>, <code>test</code>. Every toolchain is
+                    checksum-verified from the repository's pins, the same versions as on your laptop.
+                </p>
+            </div>
+            <div class="gw-feat">
+                <div class="gw-glyph" style="background: var(--bw-amber)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="18" cy="18" r="3" />
+                        <circle cx="6" cy="6" r="3" />
+                        <path d="M6 21V9a9 9 0 0 0 9 9" />
+                    </svg>
+                </div>
+                <h3>Signatures preserved</h3>
+                <p>
+                    <code>/merge</code> and <code>/auto-merge</code> fast-forward <code>main</code>, so the commits that
+                    land are the ones the author signed. The only check added to a PR is a single ack job.
+                </p>
+            </div>
+            <div class="gw-feat">
+                <div class="gw-glyph" style="background: var(--bw-green)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path
+                            d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+                        <path d="m9 12 2 2 4-4" />
+                    </svg>
+                </div>
+                <h3>Releases that publish last</h3>
+                <p>
+                    GoReleaser fills a draft with signed, notarized, attested assets. The release is published only
+                    when every step has succeeded. Docs go to Pages from the same run.
+                </p>
+            </div>
+            <div class="gw-feat">
+                <div class="gw-glyph" style="background: var(--bw-orange)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" />
+                        <path d="m21 2-9.6 9.6" />
+                        <circle cx="7.5" cy="15.5" r="5.5" />
+                    </svg>
+                </div>
+                <h3>Short-lived App tokens</h3>
+                <p>
+                    Privileged work runs on GitHub App tokens minted per job, scoped down to the permissions and
+                    repositories that step needs. They expire within the hour.
+                </p>
+            </div>
+            <div class="gw-feat">
+                <div class="gw-glyph" style="background: var(--bw-orange-2)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                        <path d="M16 16h5v5" />
+                    </svg>
+                </div>
+                <h3>Renovate per repository</h3>
+                <p>
+                    The org bot runs against each repository on its own hourly schedule, and runs immediately when you
+                    tick a checkbox on the dashboard or a PR.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- WORKFLOWS -->
+    <section class="gw-section">
+        <h2 class="gw-eyebrow">// THE WORKFLOWS</h2>
+        <p class="gw-lead">Each page covers what the workflow does, how it works, what it needs, and its caller.</p>
+        <div class="gw-card-grid">
+            {% for w in gw_workflows %}
+            <a class="gw-card" href="{{ w.url | url }}">
+                <span class="gw-card__name">{{ w.title | replace(".yaml", "") }}</span>
+                <p>{{ w.meta.description if w.meta and w.meta.description else "" }}</p>
+                <code>{{ w.title }}</code>
+            </a>
+            {% endfor %}
+            <a class="gw-card gw-card--common" href="{{ 'workflows/' | url }}">
+                <span class="gw-card__name">catalogue</span>
+                <p>Every workflow side by side: required inputs, secrets and the permissions the caller grants.</p>
+                <code>workflows/</code>
+            </a>
+        </div>
+    </section>
+
+    <!-- THREE STEPS -->
+    <section class="gw-section gw-section--last">
+        <h2 class="gw-eyebrow">// FROM ZERO TO A WIRED-UP REPOSITORY</h2>
+        <div class="gw-conn gw-steps">
+            <div class="gw-step">
+                <div class="gw-step__body">
+                    <div class="gw-step__num">01</div>
+                    <h3>Copy</h3>
+                    <p>Copy the callers you want from <code>examples/</code> into <code>.github/workflows/</code>.</p>
+                    <a class="gw-step__alt" href="{{ 'getting-started/adopting/' | url }}">Adopting
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M5 12h14" />
+                            <path d="m12 5 7 7-7 7" />
+                        </svg>
+                    </a>
+                </div>
+                <div class="gw-cmd">
+                    <span class="gw-p">$</span>
+                    <code>curl -fsSLO https://raw.githubusercontent.com/bitwise-media-group/github-workflows/main/examples/ci.yaml</code>
+                    <div class="md-code__nav">
+                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
+                            aria-label="Copy to clipboard"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="gw-step">
+                <div class="gw-step__body">
+                    <div class="gw-step__num">02</div>
+                    <h3>Pin</h3>
+                    <p>Replace the placeholder SHA with the release's commit. Renovate keeps it current from then on.</p>
+                    <a class="gw-step__alt" href="{{ 'getting-started/pinning/' | url }}">Pinning
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M5 12h14" />
+                            <path d="m12 5 7 7-7 7" />
+                        </svg>
+                    </a>
+                </div>
+                <div class="gw-cmd">
+                    <span class="gw-p">$</span>
+                    <code>git ls-remote --tags https://github.com/bitwise-media-group/github-workflows</code>
+                    <div class="md-code__nav">
+                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
+                            aria-label="Copy to clipboard"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="gw-step">
+                <div class="gw-step__body">
+                    <div class="gw-step__num">03</div>
+                    <h3>Install the Apps</h3>
+                    <p>Install the org's FF Merge, Project Sync and Renovate Apps on the repository. The variables and
+                        secrets are already org-wide.</p>
+                    <a class="gw-step__alt" href="{{ 'setup/apps/' | url }}">GitHub Apps
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M5 12h14" />
+                            <path d="m12 5 7 7-7 7" />
+                        </svg>
+                    </a>
+                </div>
+                <div class="gw-cmd">
+                    <span class="gw-p">$</span>
+                    <code>gh pr create --fill</code>
+                    <div class="md-code__nav">
+                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
+                            aria-label="Copy to clipboard"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<script>
+    // Wire the landing-page copy buttons. Delegated on document so it survives instant navigation; scoped to
+    // .gw-copy / .gw-cmd so it never touches zensical's own code-block copy buttons. Strips the leading "$ " prompt,
+    // then reuses zensical's own snackbar element so the feedback matches the native code-block copy button exactly.
+    document.addEventListener("click", function (e) {
+        var btn = e.target.closest(".gw-copy .md-code__button, .gw-cmd .md-code__button");
+        if (!btn) return;
+        var row = btn.closest(".gw-copy, .gw-cmd");
+        var code = row && row.querySelector("code");
+        if (!code) return;
+        navigator.clipboard.writeText(code.textContent.replace(/^\s*\$\s+/, "")).then(function () {
+            btn.focus();
+            var dialog = document.querySelector("[data-md-component=dialog]");
+            if (!dialog) return;
+            (dialog.querySelector(".md-dialog__inner") || dialog).textContent = "Copied to clipboard";
+            dialog.classList.add("md-dialog--active");
+            window.clearTimeout(dialog.gwResetTimer);
+            dialog.gwResetTimer = window.setTimeout(function () {
+                dialog.classList.remove("md-dialog--active");
+            }, 2000);
+        });
+    });
+</script>
+{% endblock %}
+{% block content %}{% endblock %}

@@ -1,1 +1,9 @@
 /.claude/plans/
+
+# docs site (zensical via uv): build output, cache, virtualenv, and the
+# workflow reference fragments scripts/workflow_docs.py generates at build time
+/site/
+/.cache/
+/.venv/
+/build/
+/scripts/__pycache__/

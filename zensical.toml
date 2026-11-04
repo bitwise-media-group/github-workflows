@@ -1,0 +1,231 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# github-workflows documentation — Zensical configuration
+# https://zensical.org/docs/setup/basics/
+#
+# Same shape and look as the toolchain and flux-containers sites (the parent
+# BitWise Media Group palette, terracotta on cream, see
+# docs/stylesheets/extra.css). Each workflow page embeds reference fragments
+# that scripts/workflow_docs.py renders from .github/workflows/ into
+# build/workflow-docs/ -- `mise run docs-build` and `mise run serve` run the
+# generator first, so a bare `zensical build` fails on the missing snippets
+# (check_paths below) rather than shipping stale facts.
+
+[project]
+site_name = "github-workflows"
+site_description = "Reusable GitHub Actions workflows for BitWise Media Group repositories: CI, CodeQL, release, signature-preserving fast-forward merge, Renovate and project sync, each called from a thin per-repo caller."
+site_url = "https://oss.bitwisemedia.uk/github-workflows/"
+repo_url = "https://github.com/bitwise-media-group/github-workflows"
+repo_name = "bitwise-media-group/github-workflows"
+# The `#__consent` link re-opens the cookie consent dialog so visitors can
+# change their choice at any time (see [project.extra.consent] below).
+copyright = '© 2026 BitWise Media Group Ltd — <a href="#__consent">Change cookie settings</a>'
+dev_addr = "localhost:8007"
+
+# Paths are relative to docs_dir (default: "docs")
+extra_css = ["stylesheets/extra.css"]
+
+# Every reusable workflow needs an entry under "Workflows" -- the generator
+# (scripts/workflow_docs.py) fails the build when one is missing, and the
+# landing (overrides/home.html) builds its cards from this section.
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = [
+    { "Overview" = "getting-started/index.md" },
+    { "Adopting the workflows" = "getting-started/adopting.md" },
+    { "Pinning & upgrades" = "getting-started/pinning.md" },
+  ] },
+  { "Workflows" = [
+    { "Catalogue" = "workflows/index.md" },
+    { "ci.yaml" = "workflows/ci.md" },
+    { "security.yaml" = "workflows/security.md" },
+    { "release.yaml" = "workflows/release.md" },
+    { "merge.yaml" = "workflows/merge.md" },
+    { "merge-review-ack.yaml" = "workflows/merge-review-ack.md" },
+    { "merge-notice.yaml" = "workflows/merge-notice.md" },
+    { "add-to-project.yaml" = "workflows/add-to-project.md" },
+    { "renovate.yaml" = "workflows/renovate.md" },
+  ] },
+  { "How it works" = [
+    { "The mise contract" = "concepts/mise-contract.md" },
+    { "Permissions & tokens" = "concepts/permissions.md" },
+    { "Fast-forward merging" = "concepts/fast-forward-merge.md" },
+    { "Security posture" = "concepts/security.md" },
+  ] },
+  { "Org setup" = [
+    { "GitHub Apps & secrets" = "setup/apps.md" },
+    { "macOS notarization" = "setup/macos-notarization.md" },
+  ] },
+  { "Reference" = [
+    { "Maintaining this library" = "reference/maintaining.md" },
+    { "Working on the docs" = "reference/docs.md" },
+  ] },
+]
+
+[project.theme]
+name = "material"
+custom_dir = "overrides"
+favicon = "assets/logo-mark.svg"
+features = [
+  "navigation.instant",
+  "navigation.tracking",
+  "navigation.top",
+  "navigation.footer",
+  "content.code.copy",
+  "content.code.annotate",
+  "content.tabs.link",
+  "search.suggest",
+  "search.highlight",
+  "toc.follow",
+]
+
+[project.theme.font]
+text = "Hanken Grotesk"
+code = "JetBrains Mono"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
+
+# Palette toggle for automatic mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+# Palette toggle for light mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+# Palette toggle for dark mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+# Preference storage (the cookie-consent choice, colour palette, …) is keyed
+# by this scope, which defaults to the site's own subpath. Every site under
+# oss.bitwisemedia.uk sets "/" so one consent answer applies domain-wide.
+[project.extra]
+scope = "/"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/bitwise-media-group/github-workflows"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/youtube"
+link = "https://www.youtube.com/@bitwise-media-group"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/x-twitter"
+link = "https://x.com/BitWiseMedia"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/instagram"
+link = "https://www.instagram.com/bitwisemediagroup"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/tiktok"
+link = "https://www.tiktok.com/@bitwisemediagroup"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/bluesky"
+link = "https://bsky.app/profile/bitwisemediagroup.bsky.social"
+
+# Google Analytics 4. https://zensical.org/docs/setup/analytics/#configuration
+# The analytics snippet only renders when `property` is non-empty, so the build
+# stays clean until the measurement ID is available. Loading is also gated on
+# the visitor accepting the `analytics` cookie in the consent dialog below.
+[project.extra.analytics]
+provider = "google"
+property = "G-Y34HV8TX89"
+
+# Cookie consent / GDPR. https://zensical.org/docs/setup/data-privacy/
+# Re-openable any time via the "Change cookie settings" footer link (copyright,
+# above). The `analytics` toggle controls Google Analytics; `github` controls
+# the repo/social API calls Material makes for the GitHub integration.
+[project.extra.consent]
+title = "Cookie consent"
+description = """
+We use cookies to recognise your repeated visits and preferences, and to \
+measure whether visitors find what they're looking for. With your consent, \
+you're helping us make this site better.
+"""
+actions = ["accept", "reject", "manage"]
+
+[project.extra.consent.cookies]
+analytics = "Google Analytics"
+github = "GitHub"
+
+# Markdown extensions. Declaring this section replaces Zensical's built-in
+# defaults wholesale, so the block below mirrors them verbatim and adds
+# pymdownx.snippets, which lets pages include other files with the
+# `--8<-- "path"` marker. base_path also lists the repo root, so pages embed the
+# live examples/*.yaml callers and the build/workflow-docs/ fragments generated
+# from .github/workflows/ instead of copies that drift with every release.
+# https://zensical.org/docs/setup/extensions/
+[project.markdown_extensions.abbr]
+
+[project.markdown_extensions.admonition]
+
+[project.markdown_extensions.attr_list]
+
+[project.markdown_extensions.def_list]
+
+[project.markdown_extensions.footnotes]
+
+[project.markdown_extensions.md_in_html]
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.arithmatex]
+generic = true
+
+[project.markdown_extensions.pymdownx.betterem]
+
+[project.markdown_extensions.pymdownx.caret]
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.emoji]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions.pymdownx.inlinehilite]
+
+[project.markdown_extensions.pymdownx.keys]
+
+[project.markdown_extensions.pymdownx.magiclink]
+
+[project.markdown_extensions.pymdownx.mark]
+
+[project.markdown_extensions.pymdownx.smartsymbols]
+
+[project.markdown_extensions.pymdownx.snippets]
+base_path = ["docs", "."]
+check_paths = true
+
+[project.markdown_extensions.pymdownx.superfences]
+custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+combine_header_slug = true
+
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
+
+[project.markdown_extensions.pymdownx.tilde]

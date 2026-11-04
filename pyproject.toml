@@ -1,0 +1,20 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# The github-workflows documentation site (Zensical via uv). Not a Python
+# package: no [build-system]. pyyaml is what scripts/workflow_docs.py -- the
+# generator behind each workflow page's reference tables -- imports; zensical
+# pulls it in already, but the script depends on it directly.
+[project]
+name = "github-workflows-docs"
+version = "0.1.0"
+description = "Documentation site for the BitWise Media Group reusable GitHub Actions workflows, built with Zensical."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "BitWise Media Group Ltd.", email = "oss@bitwisemedia.uk" }]
+dependencies = [
+  "pyyaml>=6.0",
+  "zensical>=0.0.69",
+]

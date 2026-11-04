@@ -8,6 +8,7 @@
 # too but sit outside the .github/workflows tree lint-workflows sweeps. zizmor
 # only walks .github/workflows inside a directory input, hence the explicit
 # file glob (the non-workflow codeql-config.yaml is skipped as not auditable).
+# Below it sit the documentation site's tasks.
 
 [lint]
 description = "prose lint + license, container, shell and workflow checks, plus zizmor over examples/"
@@ -19,3 +20,44 @@ run = [
   { task = "lint-prose" },
   "zizmor --min-severity {{vars.zizmor_min_severity}} examples/*.yaml",
 ]
+
+# The documentation site (zensical.toml + docs/, built with Zensical via uv --
+# the toolchain pins uv; uv provisions Python and the locked deps from
+# pyproject.toml + uv.lock). Each workflow page embeds reference fragments that
+# scripts/workflow_docs.py renders from .github/workflows/ into
+# build/workflow-docs/, so every docs entry point regenerates them first and
+# the site can never describe an input, default or permission the YAML no
+# longer has. The generator also fails when a reusable workflow has no page.
+# These replace common's docs-build / serve, which run a bare zensical build.
+[docs-gen]
+hide = true
+dir = "{{config_root}}"
+run = ["uv sync", "uv run --no-sync python scripts/workflow_docs.py"]
+
+# The reusable release workflow's docs job runs this task (it detects the
+# zensical.toml) and publishes ./site to GitHub Pages on every release.
+[docs-build]
+description = "build the documentation site (workflow references + zensical)"
+dir = "{{config_root}}"
+run = [{ task = "docs-gen" }, "uv run --no-sync zensical build"]
+
+[serve]
+description = "serve the docs site locally on :8007 (zensical)"
+dir = "{{config_root}}"
+run = [{ task = "docs-gen" }, "uv run --no-sync zensical serve"]
+
+# The reusable CI workflow runs `mise run build` when the task exists, so a
+# broken page -- or a reusable workflow with no page -- fails the PR.
+[build]
+description = "build the documentation site"
+run = [{ task = "docs-build" }]
+
+[ci]
+description = "the gates the reusable CI workflow runs"
+run = [{ task = "lint" }, { task = "build" }]
+
+# common's pr is fmt + lint; this adds the docs build so a page that fails to
+# render is caught before the PR, not by CI.
+[pr]
+description = "full local gate before a pull request"
+run = [{ task = "fmt" }, { task = "lint" }, { task = "build" }]

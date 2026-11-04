@@ -22,3 +22,9 @@ ignores:
   - ".claude/**"
   # machine-written by release-please, not house prose
   - "CHANGELOG.md"
+  # uv-managed virtualenv (site-packages ship their own markdown)
+  - ".venv/**"
+  # docs site build output and the workflow reference fragments generated into
+  # build/workflow-docs/ (machine-written tables, not house prose)
+  - "site/**"
+  - "build/**"

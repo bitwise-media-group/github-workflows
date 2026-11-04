@@ -5,9 +5,11 @@
 # as the .mise/ submodule: mise loads its config.toml natively as
 # .mise/config.toml (pinned tools, incl. actionlint + zizmor, and the [vars]
 # knob defaults), and this file selects the task files. A Markdown/YAML repo
-# with nothing to build or test includes only common/ -- no archetype -- and
+# with nothing to compile or test includes only common/ -- no archetype -- and
 # the Makefile is a thin forwarder (.mise/common/include.mk). Repo-local tasks
-# live in tasks.toml (included after common so its lint redefinition wins).
+# live in tasks.toml (included after common so its redefinitions win): the
+# extended lint, and the docs site's generator-first docs-build / serve /
+# build.
 # There is nothing to pin here: the org Renovate bot
 # (bitwise-media-group/renovate-config) bumps the submodule tag, which carries
 # every tool pin and its mise.lock.

@@ -7,3 +7,11 @@
 
 # shared toolchain submodule (linted in its own repo)
 .mise/
+
+# uv-managed virtualenv
+.venv/
+
+# docs site build output + generated workflow reference fragments
+site/
+build/
+.cache/

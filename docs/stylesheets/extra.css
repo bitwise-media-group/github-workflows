@@ -1,0 +1,1142 @@
+/**
+ * Copyright 2026 BitWise Media Group Ltd
+ * SPDX-License-Identifier: MIT
+ */
+
+/* ============================================================
+   github-workflows docs — the parent BitWise Media Group theme for Zensical / Material
+   Terracotta orange (#D96C36, the logo colour) on warm cream / stone neutrals,
+   warm charcoal in dark mode — the same tokens as the org site
+   (bitwise-media-group.github.io docs/stylesheets/extra.css), not a sub-brand
+   palette. Hanken Grotesk + JetBrains Mono.
+   Light -> Material "default" scheme   Dark -> Material "slate" scheme
+
+   The --bw-* block is the org palette verbatim; the --gw-* additions cover
+   what the dotty-style landing needs on top (terminal depths, an accent ink
+   for text, inline-code chips).
+   ============================================================ */
+
+/* ---------- LIGHT (default) — cream + terracotta ---------- */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #faf6f1;
+  --md-default-bg-color--light: #f2eae0;
+  --md-default-fg-color: #1c1711;
+  --md-default-fg-color--light: #322920;
+  --md-default-fg-color--lighter: #6a5840;
+  --md-default-fg-color--lightest: rgba(28, 23, 17, 0.1);
+
+  --md-primary-fg-color: #faf6f1;
+  --md-primary-fg-color--light: #f2eae0;
+  --md-primary-fg-color--dark: #e6d9c9;
+  --md-primary-bg-color: #1c1711;
+  --md-primary-bg-color--light: #4d3f2d;
+
+  --md-accent-fg-color: #c25a28;
+  --md-accent-fg-color--transparent: rgba(217, 108, 54, 0.1);
+  --md-typeset-a-color: #a1471f;
+
+  --md-code-bg-color: #f2eae0;
+  --md-code-fg-color: #322920;
+
+  --md-footer-bg-color: #1c1711;
+  --md-footer-bg-color--dark: #15110b;
+
+  /* warm brand ramp */
+  --bw-orange: #d96c36; /* primary — the logo colour */
+  --bw-orange-2: #c25a28; /* hover */
+  --bw-orange-3: #a1471f; /* active */
+  --bw-orange-soft: #fbf1ea;
+  --bw-orange-tint: rgba(217, 108, 54, 0.1);
+  --bw-green: #5e8c4f; /* moss — success / live dot */
+  --bw-amber: #e0a030;
+
+  --bw-bg: #faf6f1; /* page / cream */
+  --bw-surface: #ffffff; /* cards */
+  --bw-sunken: #f2eae0;
+  --bw-fg: #1c1711;
+  --bw-body: #322920;
+  --bw-muted: #6a5840;
+  --bw-faint: #8b7559;
+  --bw-line: #e6d9c9;
+  --bw-line-2: #d4c2ac;
+  --bw-shadow:
+    0 12px 32px rgba(50, 41, 32, 0.12), 0 4px 8px rgba(50, 41, 32, 0.06);
+  --bw-glow: 0 8px 22px rgba(217, 108, 54, 0.3);
+
+  /* github-workflows additions */
+  --gw-ink: #a1471f; /* accent as TEXT — legible on cream */
+  --gw-code: #f6efe6; /* terminal bars + command rows */
+  --gw-code-2: #f2eae0; /* recessed terminal bodies */
+  --gw-ic-bg: #f2eae0;
+  --gw-ic-border: rgba(28, 23, 17, 0.1);
+  --gw-shadow-strong:
+    0 28px 70px rgba(50, 41, 32, 0.18), 0 6px 14px rgba(50, 41, 32, 0.06);
+}
+
+/* ---------- DARK (slate) — warm charcoal ---------- */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #1c1711;
+  --md-default-bg-color--light: #322920;
+  --md-default-fg-color: #faf6f1;
+  --md-default-fg-color--light: #e6d9c9;
+  --md-default-fg-color--lighter: #b0997e;
+  --md-default-fg-color--lightest: rgba(250, 246, 241, 0.09);
+
+  --md-primary-fg-color: #1c1711;
+  --md-primary-fg-color--light: #322920;
+  --md-primary-fg-color--dark: #15110b;
+  --md-primary-bg-color: #faf6f1;
+  --md-primary-bg-color--light: #d4c2ac;
+
+  --md-accent-fg-color: #de854f;
+  --md-accent-fg-color--transparent: rgba(222, 133, 79, 0.12);
+  --md-typeset-a-color: #e49e72;
+
+  --md-code-bg-color: #15110b;
+  --md-code-fg-color: #e6d9c9;
+
+  --md-footer-bg-color: #15110b;
+  --md-footer-bg-color--dark: #100d08;
+
+  --bw-orange: #de854f;
+  --bw-orange-2: #e49e72;
+  --bw-orange-3: #edbe9f;
+  --bw-orange-soft: rgba(222, 133, 79, 0.16);
+  --bw-orange-tint: rgba(222, 133, 79, 0.12);
+  --bw-green: #8fb37e;
+  --bw-amber: #e0a030;
+
+  --bw-bg: #1c1711;
+  --bw-surface: #322920;
+  --bw-sunken: #15110b;
+  --bw-fg: #faf6f1;
+  --bw-body: #f2eae0;
+  --bw-muted: #b0997e;
+  --bw-faint: #8b7559;
+  --bw-line: rgba(250, 246, 241, 0.1);
+  --bw-line-2: rgba(250, 246, 241, 0.18);
+  --bw-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --bw-glow: 0 8px 22px rgba(222, 133, 79, 0.28);
+
+  /* github-workflows additions */
+  --gw-ink: #e49e72;
+  --gw-code: #261f18;
+  --gw-code-2: #15110b;
+  --gw-ic-bg: #2a221a;
+  --gw-ic-border: rgba(250, 246, 241, 0.12);
+  --gw-shadow-strong: 0 28px 70px rgba(0, 0, 0, 0.55);
+}
+
+/* ===== Header: flat, with a soft terracotta underline ===== */
+.md-header {
+  box-shadow: none;
+  border-bottom: 1px solid var(--bw-line);
+  position: relative;
+}
+.md-header[data-md-state="shadow"],
+.md-header--shadow {
+  box-shadow: none;
+}
+.md-header__inner {
+  min-height: 3rem;
+}
+.md-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--bw-orange),
+    var(--bw-orange-2) 55%,
+    var(--bw-orange-3)
+  );
+  opacity: 0.9;
+}
+
+/* Header / drawer wordmark lockup: logo + stacked "github-workflows / BITWISE MEDIA
+   GROUP" (partials/header.html, partials/nav.html) */
+.gw-headmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  line-height: 1;
+}
+.gw-headmark img {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+.gw-headmark__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.gw-headmark__name {
+  font-family: var(--md-code-font-family, "JetBrains Mono", monospace);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--bw-fg);
+}
+.gw-headmark__sub {
+  font-family: var(--md-code-font-family, "JetBrains Mono", monospace);
+  font-size: 8px;
+  letter-spacing: 0.3em;
+  color: var(--bw-orange-2);
+  margin-top: 4px;
+}
+.gw-headmark:hover {
+  opacity: 0.85;
+}
+/* Material lays the header title out for cross-fading page "topics": the title
+   is a fixed 2.4rem-tall cell and .md-header__topic is position:absolute (so it
+   carries no width and pins to the top). We render a single static wordmark, so
+   undo that — let the lockup flow, size the title to its content, and vertically
+   centre it. */
+.md-header__title {
+  flex-grow: 1;
+  height: auto;
+  line-height: 1;
+  margin-right: 0;
+}
+.md-header__title > .md-header__ellipsis {
+  display: flex;
+  align-items: center;
+  width: auto;
+  height: auto;
+}
+.md-header .md-header__topic {
+  position: static;
+  align-items: center;
+}
+.md-header .md-ellipsis {
+  flex-grow: 0;
+  overflow: visible;
+}
+.md-nav__title .gw-headmark__name {
+  color: var(--bw-fg);
+}
+
+/* ===== Doc pages ===== */
+.md-footer {
+  border-top: 1px solid var(--bw-line);
+}
+[dir="ltr"] .md-search__input {
+  border-radius: 8px;
+}
+.md-nav__link--active,
+.md-nav__item .md-nav__link--active {
+  color: var(--md-accent-fg-color);
+}
+.md-typeset .md-typeset__table {
+  border-color: var(--bw-line);
+}
+.md-typeset table:not([class]) th {
+  background: var(--bw-sunken);
+  color: var(--bw-fg);
+}
+.md-typeset .admonition,
+.md-typeset details {
+  border-left-width: 3px;
+  border-radius: 8px;
+}
+.md-typeset .tabbed-labels > label > [href]:first-child,
+.md-typeset .tabbed-set > input:checked + label {
+  color: var(--md-accent-fg-color);
+}
+
+/* Inline-code chips. Material's default --md-code-bg-color sits darker than the
+   page in dark mode, so a bare inline chip nearly vanishes; --gw-ic-bg gives it
+   a raised surface with a hairline border instead. Scoped to inline code (a
+   <code> not inside a <pre>) so fenced blocks keep their own sunken panel. */
+.md-typeset :not(pre) > code {
+  background-color: var(--gw-ic-bg);
+  border: 1px solid var(--gw-ic-border);
+}
+
+/* ============================================================
+   LANDING PAGE  (.gw) — injected by overrides/home.html.
+   The dotty landing's structure in the parent palette: it reads
+   the scheme-scoped --bw-* / --gw-* tokens above, so it follows
+   the dark/light toggle — cream in light mode, warm charcoal in
+   dark. Terracotta is the FILL colour (buttons, dots, icon
+   tiles); --gw-ink is the accent used as TEXT.
+   ============================================================ */
+.gw {
+  --gw-mono: var(--md-code-font-family, "JetBrains Mono", ui-monospace, monospace);
+  --gw-sans: var(--md-text-font-family, "Hanken Grotesk", system-ui, sans-serif);
+  --gw-r: 10px;
+
+  background: var(--bw-bg);
+  color: var(--bw-body);
+  font-family: var(--gw-sans);
+  line-height: 1.55;
+}
+.gw * {
+  box-sizing: border-box;
+}
+.gw a {
+  text-decoration: none;
+}
+.gw code {
+  font-family: var(--gw-mono);
+}
+
+/* ---- HERO ---- */
+.gw-hero {
+  position: relative;
+  overflow: hidden;
+}
+.gw-hero__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  background-image:
+    linear-gradient(var(--bw-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bw-line) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 72%);
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 72%);
+}
+.gw-hero__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      820px 380px at 78% -8%,
+      color-mix(in oklab, var(--bw-orange) 16%, transparent),
+      transparent
+    ),
+    radial-gradient(
+      620px 360px at 8% 6%,
+      color-mix(in oklab, var(--bw-amber) 9%, transparent),
+      transparent
+    );
+}
+.gw-hero__mark {
+  position: absolute;
+  right: -120px;
+  top: -70px;
+  width: 560px;
+  max-width: 70vw;
+  opacity: 0.05;
+  pointer-events: none;
+  user-select: none;
+}
+.gw-hero__inner {
+  position: relative;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 76px 24px 52px;
+  text-align: center;
+}
+.gw-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 24px;
+  font-family: var(--gw-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gw-ink);
+  border: 1px solid color-mix(in oklab, var(--bw-orange) 35%, transparent);
+  background: var(--bw-orange-tint);
+  padding: 5px 13px;
+  border-radius: 999px;
+}
+.gw-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bw-green);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--bw-green) 22%, transparent);
+  animation: gw-pulse 1.8s ease-in-out infinite;
+}
+.gw-title {
+  margin: 0;
+  font-family: var(--gw-sans);
+  font-weight: 800;
+  font-size: clamp(42px, 7vw, 78px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  color: var(--bw-fg);
+}
+.gw-title em {
+  font-style: normal;
+  color: var(--bw-orange);
+}
+.gw-lede {
+  margin: 22px auto 0;
+  max-width: 660px;
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--bw-muted);
+  text-wrap: pretty;
+}
+.gw-lede code {
+  font-size: 0.88em;
+  color: var(--gw-ink);
+}
+
+/* install terminal block */
+.gw-term {
+  max-width: 640px;
+  margin: 30px auto 0;
+  text-align: left;
+  overflow: hidden;
+  background: var(--bw-surface);
+  border: 1px solid var(--bw-line);
+  border-radius: var(--gw-r);
+  box-shadow: var(--bw-shadow);
+}
+.gw-term__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+}
+.gw-dots {
+  display: flex;
+  gap: 6px;
+}
+.gw-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.gw-dots i:nth-child(1) {
+  background: var(--bw-orange);
+}
+.gw-dots i:nth-child(2) {
+  background: var(--bw-amber);
+}
+.gw-dots i:nth-child(3) {
+  background: var(--bw-green);
+}
+.gw-term__bar span {
+  margin-left: 6px;
+  font-family: var(--gw-mono);
+  font-size: 11px;
+  color: var(--bw-muted);
+}
+
+/* a copyable command row ($ cmd  + copy button) */
+.gw-copy {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 44px 11px 14px;
+  background: var(--gw-code);
+  border-top: 1px solid var(--bw-line);
+}
+.gw-copy .gw-p,
+.gw-cmd .gw-p {
+  color: var(--gw-ink);
+  font-family: var(--gw-mono);
+  font-size: 13px;
+}
+.gw-copy code {
+  flex: 1;
+  font-size: 13px;
+  color: var(--bw-fg);
+  background: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* buttons */
+.gw-cta {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+.gw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--gw-sans);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 13px 22px;
+  border-radius: var(--gw-r);
+  border: 1px solid transparent;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.gw-btn svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.gw-btn--primary {
+  background: var(--bw-orange);
+  color: #fff;
+}
+.gw-btn--primary:hover {
+  background: var(--bw-orange-2);
+  color: #fff;
+  box-shadow: var(--bw-glow);
+  transform: translateY(-1px);
+}
+.gw-btn--secondary {
+  background: var(--bw-surface);
+  color: var(--bw-body);
+  border-color: var(--bw-line-2);
+}
+.gw-btn--secondary:hover {
+  border-color: var(--bw-orange);
+  color: var(--gw-ink);
+}
+.gw-btn--ghost {
+  background: transparent;
+  color: var(--bw-muted);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.gw-btn--ghost:hover {
+  color: var(--gw-ink);
+}
+
+/* ---- TERMINAL SHOWCASE ---- */
+.gw-shot {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 8px 24px 4px;
+}
+.gw-shot__frame {
+  background: var(--gw-code-2);
+  border: 1px solid var(--bw-line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--gw-shadow-strong);
+}
+.gw-shot__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bw-line);
+  background: var(--gw-code);
+  font-family: var(--gw-mono);
+}
+.gw-shot__bar .gw-dots i {
+  width: 11px;
+  height: 11px;
+}
+.gw-title-sm {
+  margin-left: 6px;
+  font-size: 11.5px;
+  color: var(--bw-muted);
+}
+.gw-live {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gw-ink);
+}
+.gw-panes {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+}
+.gw-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.gw-pane + .gw-pane {
+  border-left: 1px solid var(--bw-line);
+}
+.gw-pane__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border-bottom: 1px solid var(--bw-line);
+  background: var(--gw-code);
+}
+.gw-pane__head b {
+  font-family: var(--gw-mono);
+  font-size: 10px;
+  color: #fff;
+  background: var(--bw-orange);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-weight: 700;
+}
+.gw-pane__head span {
+  font-family: var(--gw-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bw-muted);
+}
+.gw-pane__body {
+  padding: 12px 14px;
+  font-family: var(--gw-mono);
+  font-size: 12px;
+  line-height: 1.85;
+  color: var(--bw-body);
+  overflow: hidden;
+}
+.gw-pane__body > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gw-toml .s {
+  color: var(--gw-ink);
+  font-weight: 600;
+}
+.gw-toml .k {
+  color: var(--bw-fg);
+}
+.gw-toml .v {
+  color: var(--bw-green);
+}
+.gw-toml .c {
+  color: var(--bw-faint);
+}
+.gw-run {
+  display: flex;
+  gap: 10px;
+}
+.gw-run .t {
+  width: 52px;
+  flex-shrink: 0;
+  color: var(--gw-ink);
+}
+.gw-run .d {
+  flex: 1;
+  min-width: 0;
+  color: var(--bw-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gw-run .ok {
+  color: var(--bw-green);
+}
+.gw-pane__sep {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--bw-line);
+}
+.gw-ok {
+  color: var(--bw-green);
+}
+.gw-dim {
+  color: var(--bw-muted);
+}
+.gw-blink {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: var(--bw-orange);
+  vertical-align: middle;
+  margin-left: 1px;
+  animation: gw-blink 1s steps(1) infinite;
+}
+.gw-shot__cap {
+  text-align: center;
+  font-size: 14px;
+  color: var(--bw-muted);
+  margin: 16px 2px 0;
+}
+.gw-shot__cap b {
+  color: var(--bw-fg);
+  font-weight: 600;
+}
+.gw-shot__cap code {
+  font-size: 0.9em;
+  color: var(--gw-ink);
+}
+
+/* ---- MARQUEE ---- */
+.gw-marquee {
+  overflow: hidden;
+  border-top: 1px solid var(--bw-line);
+  border-bottom: 1px solid var(--bw-line);
+  padding: 13px 0;
+  margin-top: 44px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.gw-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: gw-marquee 48s linear infinite;
+}
+.gw-marquee__track span {
+  font-family: var(--gw-mono);
+  font-size: 12.5px;
+  color: var(--bw-muted);
+  padding: 0 22px;
+  border-right: 1px solid var(--bw-line);
+  white-space: nowrap;
+}
+
+/* ---- STATS ---- */
+.gw-stats-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.gw-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--bw-line);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+.gw-stat {
+  padding: 22px 20px;
+  background: var(--bw-surface);
+}
+.gw-stat + .gw-stat {
+  border-left: 1px solid var(--bw-line);
+}
+.gw-stat b {
+  display: block;
+  font-family: var(--gw-sans);
+  font-weight: 800;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: -0.02em;
+  color: var(--bw-fg);
+}
+.gw-stat b.gw-ink {
+  color: var(--bw-orange);
+}
+.gw-stat small {
+  display: block;
+  font-family: var(--gw-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bw-muted);
+  margin-top: 4px;
+}
+
+/* ---- SECTIONS ---- */
+.gw-section {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 72px 24px 0;
+}
+.gw-section--last {
+  padding-bottom: 84px;
+}
+.gw-eyebrow {
+  margin: 0;
+  font-family: var(--gw-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--gw-ink);
+}
+.gw-lead {
+  margin: 10px 0 28px;
+  font-family: var(--gw-sans);
+  font-size: clamp(24px, 3.4vw, 34px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--bw-fg);
+  max-width: 780px;
+  text-wrap: balance;
+}
+.gw-lead--sm {
+  margin: 10px 0 24px;
+  font-family: var(--gw-sans);
+  font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--bw-fg);
+}
+.gw-lead--sm code {
+  font-size: 0.82em;
+  color: var(--gw-ink);
+  background: none;
+}
+
+/* connected feature grid */
+.gw-conn {
+  border: 1px solid var(--bw-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.gw-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.gw-grid-3 > * {
+  border-left: 1px solid var(--bw-line);
+  border-top: 1px solid var(--bw-line);
+}
+.gw-grid-3 > :nth-child(3n + 1) {
+  border-left: none;
+}
+.gw-grid-3 > :nth-child(-n + 3) {
+  border-top: none;
+}
+.gw-feat {
+  padding: 24px;
+  background: var(--bw-surface);
+}
+.gw-glyph {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  color: #fff;
+}
+.gw-glyph svg {
+  width: 20px;
+  height: 20px;
+}
+.gw-feat h3 {
+  margin: 0 0 7px;
+  font-family: var(--gw-sans);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--bw-fg);
+}
+.gw-feat p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--bw-muted);
+  text-wrap: pretty;
+}
+.gw-feat p code {
+  font-size: 0.9em;
+  color: var(--bw-fg);
+  background: none;
+  padding: 0;
+}
+
+/* chart cards */
+.gw-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.gw-card {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border-radius: 12px;
+  border: 1px solid var(--bw-line);
+  background: var(--bw-surface);
+  color: var(--bw-body);
+  transition:
+    transform 0.18s,
+    box-shadow 0.18s,
+    border-color 0.18s;
+}
+.gw-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--bw-shadow);
+  border-color: color-mix(in oklab, var(--bw-orange) 45%, transparent);
+}
+.gw-card__name {
+  font-family: var(--gw-mono);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--gw-ink);
+}
+.gw-card p {
+  margin: 8px 0 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--bw-muted);
+  text-wrap: pretty;
+}
+.gw-card p code {
+  font-size: 0.9em;
+  color: var(--bw-fg);
+}
+.gw-card > code {
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: 11.5px;
+  color: var(--bw-muted);
+  padding: 4px 10px 4px 22px;
+  border: 1px solid var(--bw-line-2);
+  border-radius: 7px;
+  position: relative;
+}
+.gw-card > code::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--bw-orange);
+}
+.gw-card--common > code::before {
+  background: var(--bw-green);
+}
+
+/* ---- CONTRACT (command list) ---- */
+.gw-cmdcard {
+  background: var(--gw-code-2);
+  border: 1px solid var(--bw-line);
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 780px;
+}
+.gw-cmdcard__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--bw-line);
+  background: var(--gw-code);
+}
+.gw-cmdcard__bar svg {
+  width: 14px;
+  height: 14px;
+  color: var(--gw-ink);
+}
+.gw-cmdcard__bar span {
+  font-family: var(--gw-mono);
+  font-size: 11.5px;
+  color: var(--bw-muted);
+}
+.gw-cmdcard__list {
+  padding: 8px 0;
+}
+.gw-cmdrow {
+  display: flex;
+  gap: 16px;
+  padding: 7px 16px;
+  flex-wrap: wrap;
+}
+.gw-cmdrow + .gw-cmdrow {
+  border-top: 1px solid color-mix(in oklab, var(--bw-line) 60%, transparent);
+}
+.gw-cmdrow code {
+  font-size: 13px;
+  color: var(--bw-fg);
+  background: none;
+  min-width: 180px;
+}
+.gw-cmdrow code .p {
+  color: var(--gw-ink);
+}
+.gw-cmdrow .cmt {
+  font-family: var(--gw-mono);
+  font-size: 12.5px;
+  color: var(--bw-muted);
+  flex: 1;
+}
+
+/* ---- STEPS ---- */
+.gw-steps {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.gw-step {
+  background: var(--bw-surface);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.gw-step + .gw-step {
+  border-left: 1px solid var(--bw-line);
+}
+.gw-step__body {
+  padding: 24px 24px 18px;
+  flex: 1;
+}
+.gw-step__num {
+  font-family: var(--gw-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gw-ink);
+  margin-bottom: 12px;
+}
+.gw-step h3 {
+  margin: 0 0 7px;
+  font-family: var(--gw-sans);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--bw-fg);
+}
+.gw-step p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--bw-muted);
+}
+.gw-step p code {
+  font-size: 0.9em;
+  color: var(--bw-fg);
+}
+.gw-step__alt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--gw-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.gw-step__alt svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+}
+.gw-step__alt:hover svg {
+  transform: translateX(3px);
+}
+.gw-cmd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--bw-line);
+  background: var(--gw-code);
+}
+.gw-cmd code {
+  flex: 1;
+  font-size: 12px;
+  color: var(--bw-fg);
+  background: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 28px;
+}
+
+/* Copy buttons reuse zensical's .md-code__nav / .md-code__button styling; the
+   row just provides the positioning context. The wiring is the inline script in
+   overrides/home.html (scoped to .gw-copy / .gw-cmd so it never touches
+   zensical's own code-block copy buttons). */
+.gw-copy .md-code__nav,
+.gw-cmd .md-code__nav {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+}
+
+/* ---- keyframes ---- */
+@keyframes gw-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes gw-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes gw-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gw-marquee__track,
+  .gw-dot,
+  .gw-blink {
+    animation: none !important;
+  }
+}
+
+/* ---- responsive ---- */
+@media (max-width: 860px) {
+  .gw-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .gw-grid-3 > * {
+    border-left: none;
+    border-top: 1px solid var(--bw-line);
+  }
+  .gw-grid-3 > :first-child {
+    border-top: none;
+  }
+  .gw-steps {
+    grid-template-columns: 1fr;
+  }
+  .gw-step + .gw-step {
+    border-left: none;
+    border-top: 1px solid var(--bw-line);
+  }
+}
+@media (max-width: 720px) {
+  .gw-panes {
+    grid-template-columns: 1fr;
+  }
+  .gw-pane + .gw-pane {
+    border-left: none;
+    border-top: 1px solid var(--bw-line);
+  }
+  .gw-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .gw-stat:nth-child(3) {
+    border-left: none;
+  }
+  .gw-stat:nth-child(n + 3) {
+    border-top: 1px solid var(--bw-line);
+  }
+}
+@media (max-width: 600px) {
+  .gw-hero__inner,
+  .gw-shot,
+  .gw-stats-wrap,
+  .gw-section {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ============================================================
+   HOME PAGE chrome — drop the empty article that home.html leaves
+   behind (the landing lives in the `tabs` block above it).
+   `body:has(.gw-hero)` matches only the landing, so real doc pages
+   (404, …) keep their container.
+   ============================================================ */
+body:has(.gw-hero) .md-content {
+  display: none;
+}
+body:has(.gw-hero) .md-main__inner {
+  margin-top: 0;
+}
+body:has(.gw-hero) .md-main {
+  background: var(--bw-bg);
+}
