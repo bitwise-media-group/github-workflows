@@ -29,6 +29,44 @@ Pick the type by **who the change reaches**, not by which directory the file liv
 In short: if a change alters what a **consumer's** workflow run does, it's `feat:`/`fix:`; if it only affects how
 **this** repository builds, tests, releases, or maintains itself, it's `ci:`/`chore:`/`build:`.
 
+## Documentation site
+
+`https://oss.bitwisemedia.uk/github-workflows/` is a [Zensical](https://zensical.org) site that documents every reusable
+workflow: what it does, how it works, and what a consumer needs for it. It is part of the product, so **keep it in step
+with the workflows in the same change**. A workflow change without its docs update is incomplete.
+
+- **Layout:** `zensical.toml` (config + nav), `pyproject.toml` + `uv.lock`, hand-written pages in `docs/`, theme in
+  `overrides/` + `docs/stylesheets/extra.css` (copied from the toolchain / flux-containers sites), and the generator
+  `scripts/workflow_docs.py`.
+- **Generated, never hand-copied:** `scripts/workflow_docs.py` renders each workflow's inputs, secrets, outputs, caller
+  permissions (the union over jobs), jobs + `if:` conditions and pinned actions from the YAML into
+  `build/workflow-docs/` (git-ignored). The pages include those fragments, and the live `examples/*.yaml` callers, with
+  `--8<--`. Never paste an input table, permission block, action pin or caller example into a page.
+- **Hand-written, so you must update it:** when a change alters a workflow's behaviour (a job, step, condition,
+  detection signal, requirement, org prerequisite or failure mode), update in the same commit:
+  - `docs/workflows/<name>.md`, especially its _How it works_, _Requirements_ and _Troubleshooting_ sections, and its
+    `description` front matter (it feeds the landing card);
+  - the summary row in `docs/workflows/index.md`;
+  - any concept or setup page the change touches: `docs/concepts/mise-contract.md` (tasks, detection signals),
+    `docs/concepts/permissions.md` and `docs/setup/apps.md` (scopes, Apps, secrets),
+    `docs/concepts/fast-forward-merge.md` (the merge trio), `docs/concepts/security.md` (hardening rules),
+    `docs/setup/macos-notarization.md` (signing), `docs/reference/maintaining.md` (the `self-*` callers, release flow).
+- **A new reusable workflow** needs `docs/workflows/<name>.md` (copy an existing page as the template) and a
+  `{ "<name>.yaml" = "workflows/<name>.md" }` entry under _Workflows_ in `zensical.toml`'s nav. A renamed or removed one
+  needs its page and nav entry renamed or removed. The generator **fails the build** on a missing page, a missing nav
+  entry, or an orphaned page.
+- **Don't hard-code release numbers** in prose (`vX.Y.Z`, not `v8.1.0`). The embedded examples already carry the current
+  version, and release-please rewrites it.
+- **README.md** still carries the long-form catalog. When you change a workflow's documented contract, keep the README's
+  section for it consistent with the site.
+- **Build:** `mise run docs-build` (generator + `zensical build` into `site/`); `mise run serve` previews on
+  `http://localhost:8007`. `mise run build` is the same build and runs in CI, so a broken page fails the PR.
+- **Publishing:** there is no separate docs workflow. `self-release.yaml` → `release.yaml`'s `docs` job detects
+  `zensical.toml` and deploys on every release, so the site always describes the latest release. A `docs:` commit goes
+  live with the next `feat:`/`fix:` release.
+- **Commit type:** docs-only changes are `docs:`. Docs updated alongside a workflow change ride in that change's
+  `feat:`/`fix:` commit.
+
 ## Before committing
 
 Always run `mise run pr` before creating a commit (the root `Makefile` is a thin forwarder, so `make pr` works too). It
@@ -38,4 +76,5 @@ and you have staged everything it changed. The tools (prettier, markdownlint-cli
 pinned by the shared toolchain submodule at `.mise/`
 ([`bitwise-media-group/toolchain`](https://github.com/bitwise-media-group/toolchain)), loaded natively as
 `.mise/config.toml`; `git submodule update --init` then `mise install` fetches them. At toolchain v3.0.0 `mise run pr`
-ends by running `./commit.sh` if one exists, so an agent must run `mise run fmt` and `mise run lint` instead of `pr`.
+ends by running `./commit.sh` if one exists, so an agent must run `mise run fmt`, `mise run lint` and `mise run build`
+(the docs site) instead of `pr`.
