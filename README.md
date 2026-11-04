@@ -8,6 +8,9 @@ copy-pasted per repo.
 Copy a caller from [`examples/`](examples/) into your repo's `.github/workflows/`, then pin it (see
 [Pinning](#pinning)).
 
+The full documentation — how each workflow works, what it requires, its inputs, secrets and permissions — is at
+**<https://oss.bitwisemedia.uk/github-workflows/>** (source in [`docs/`](docs/)).
+
 ## Catalog
 
 All reusable workflows live in [`.github/workflows/`](.github/workflows/) and are `workflow_call`-only. Every external
@@ -159,10 +162,10 @@ release). With `vanity-tags: true` it also moves the floating major and minor ta
   runs without a Gatekeeper prompt and the Homebrew cask needs no quarantine-stripping hook. One-time org setup and the
   consumer-side config are in [macOS notarization: org setup](#macos-notarization-org-setup).
 - **Permissions (caller grants):** `contents: write`, `issues: write`, `pull-requests: write`, `id-token: write`,
-  `attestations: write`, `artifact-metadata: write`, `pages: write`. Grant all seven even without a `.goreleaser.yaml`
-  or `zensical.toml`: GitHub resolves a reusable workflow's permissions as the union of every job and ignores `if:`, so
-  the skipped GoReleaser job's `id-token` / `attestations` / `artifact-metadata` and the docs job's `pages` are still
-  required or the run fails at startup.
+  `attestations: write`, `artifact-metadata: write`, `packages: write`, `pages: write`. Grant all eight even without a
+  `.goreleaser.yaml` or `zensical.toml`: GitHub resolves a reusable workflow's permissions as the union of every job and
+  ignores `if:`, so the skipped GoReleaser job's `id-token` / `attestations` / `artifact-metadata` / `packages` and the
+  docs job's `pages` are still required or the run fails at startup.
 
 ```yaml
 on:
@@ -175,6 +178,7 @@ permissions:
   id-token: write # cosign keyless signing + docs Pages OIDC deploy
   attestations: write # github build-provenance attestation
   artifact-metadata: write # artifact storage record for the attestation
+  packages: write # push container images to ghcr (goreleaser dockers_v2, when configured)
   pages: write # publish docs to GitHub Pages (when a zensical.toml exists)
 jobs:
   release:
@@ -565,16 +569,16 @@ Store Connect → Team Keys; generate a new one and re-run the three `MACOS_NOTA
 ## Testing changes
 
 This repo dogfoods its own reusable workflows by local path: `self-ci.yaml` calls `ci.yaml` (which installs the tools
-pinned by the `.mise/` toolchain submodule and runs the one task this repo defines, `lint`) and `self-release.yaml`
-calls `release.yaml` (no `.goreleaser.yaml`, so just the release-please cut plus the `vanity-tags` job).
-`self-security.yaml` stays a bespoke `actions`-only scan: the library has no compilable Go and no JS/TS product source,
-so an `actions` CodeQL pass is the whole surface. The `/merge` + auto-merge flows (`self-merge.yaml`), its fork-PR
-review-ack companion (`self-merge-review-ack.yaml`), the merge notice (`self-merge-notice.yaml`) and the per-repo
-Renovate run (`self-renovate.yaml`) dogfood the rest. That Renovate run is also this repo's own dependency automation
-(action SHA pins and the `.mise` submodule tag), on the org bot's config from
-[`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config). Validate a change to a
-reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA (`@your-branch`) and
-opening a PR there.
+pinned by the `.mise/` toolchain submodule and runs the two tasks this repo defines, `lint` and `build` — the docs site)
+and `self-release.yaml` calls `release.yaml` (no `.goreleaser.yaml`, so the release-please cut, the `docs` job
+publishing the site to Pages, and the `vanity-tags` job). `self-security.yaml` stays a bespoke `actions`-only scan: the
+library has no compilable Go and no JS/TS product source, so an `actions` CodeQL pass is the whole surface. The
+`/merge` + auto-merge flows (`self-merge.yaml`), its fork-PR review-ack companion (`self-merge-review-ack.yaml`), the
+merge notice (`self-merge-notice.yaml`) and the per-repo Renovate run (`self-renovate.yaml`) dogfood the rest. That
+Renovate run is also this repo's own dependency automation (action SHA pins and the `.mise` submodule tag), on the org
+bot's config from [`bitwise-media-group/renovate-config`](https://github.com/bitwise-media-group/renovate-config).
+Validate a change to a reusable workflow by temporarily pointing a real consumer's caller at a feature branch or SHA
+(`@your-branch`) and opening a PR there.
 
 ## Releasing this repo
 
