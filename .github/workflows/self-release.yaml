@@ -3,7 +3,8 @@
 
 # This repo's own release, dogfooding the reusable release workflow by local path.
 # With no .goreleaser.yaml it takes the non-Go path: release-please cuts the release
-# (release-type: simple), then -- because vanity-tags is true -- the vanity-tags job
+# (release-type: simple), the docs job (zensical.toml) publishes the documentation
+# site to GitHub Pages, and -- because vanity-tags is true -- the vanity-tags job
 # moves the floating v1 / v1.1 tags that consumers of these reusable workflows pin.
 name: Release
 
@@ -19,11 +20,10 @@ on:
 # GitHub resolves a reusable workflow's permissions statically at startup: it takes
 # the union of every job's declared permissions and ignores `if:`. So the caller
 # must grant what the goreleaser job declares (id-token / attestations /
-# artifact-metadata / packages) and what the docs job declares (pages) even though both are
-# skipped here (no .goreleaser.yaml, no zensical.toml) -- dropping them
-# startup_failures the whole run. No executed job realizes them at runtime:
-# release-please and publish declare their own narrower job-level permissions, and
-# the goreleaser and docs jobs never run.
+# artifact-metadata / packages) even though that job is skipped here (no
+# .goreleaser.yaml) -- dropping them startup_failures the whole run. The docs job
+# does run (zensical.toml) and realizes pages + id-token for the Pages deploy;
+# release-please and vanity-tags declare their own narrower job-level permissions.
 permissions:
   # release-please cuts the release/tag; publish moves the vanity tags
   contents: write

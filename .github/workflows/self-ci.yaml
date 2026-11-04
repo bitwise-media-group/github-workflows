@@ -5,8 +5,9 @@
 # always runs the current definition, not a release pin). The library has no root
 # go.mod and no committed dist/ -- every tool comes from the shared toolchain
 # submodule's pins at .mise/ -- so the reusable workflow sets up mise only and
-# runs the canonical tasks: just lint (prose + license + workflow lint) is
-# defined here, so build and test are skipped.
+# runs the canonical tasks: lint (prose + license + workflow lint) and build
+# (the Zensical docs site, which also fails when a reusable workflow has no
+# page) are defined here; test is not, so it is skipped.
 name: Continuous Integration
 
 on:
