@@ -10,7 +10,8 @@
 # The repo must provide a mise config -- a root mise.toml, or the shared task
 # library (bitwise-media-group/make) mounted at .mise/ -- defining whichever of
 # the tasks lint / build / test do real work there (test emitting
-# coverage/cobertura-coverage.xml, optionally coverage/junit.xml) and -- if you
+# coverage/coverage.out, coverage/lcov.info or coverage/cobertura-coverage.xml,
+# optionally coverage/junit.xml) and -- if you
 # set e2e: true -- e2e. Undefined tasks are skipped; no no-op stubs needed.
 # Add product-specific jobs (integration, ...) alongside the `ci` job here; a
 # caller can mix a reusable-workflow job with normal jobs.

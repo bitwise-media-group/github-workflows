@@ -39,7 +39,7 @@ flowchart LR
    - runs `mise run <task>`.
 
    The `build` leg then runs `git diff --exit-code -- dist` when `dist/` exists. A stale committed bundle, such as a
-   JavaScript Action's `dist/`, fails the PR. The `test` leg uploads `coverage/coverage.out` or
+   JavaScript Action's `dist/`, fails the PR. The `test` leg uploads `coverage/coverage.out`, `coverage/lcov.info` or
    `coverage/cobertura-coverage.xml`, plus `coverage/junit.xml`, as artifacts.
 
 2. **`coverage`**: runs after every `tasks` leg succeeds, in a **fresh checkout that never ran the build**. It downloads
@@ -56,10 +56,11 @@ fallback.
 
 - A **mise config** at the root: a `mise.toml`, or the toolchain submodule at `.mise/` loaded as `.mise/config.toml`.
   See [the mise contract](../concepts/mise-contract.md).
-- Whichever of `lint`, `build` and `test` do real work. `test` should write `coverage/cobertura-coverage.xml` (or Go's
-  `coverage/coverage.out`) and optionally `coverage/junit.xml`.
+- Whichever of `lint`, `build` and `test` do real work. `test` should write one coverage report: Go's
+  `coverage/coverage.out`, LCOV at `coverage/lcov.info` (bun test, Swift), or `coverage/cobertura-coverage.xml`. It may
+  also write `coverage/junit.xml`.
 - No `setup-go` / `setup-node` / `setup-uv`. Go, Node, Python, uv and every dev CLI come from the mise pins, and tasks
-  install their own project dependencies (`npm ci`, `go mod download`, `uv sync`).
+  install their own project dependencies (`bun install`, `npm ci`, `go mod download`, `uv sync`).
 - Codecov: the repository connected in Codecov, or `coverage: false`.
 
 ## Interface

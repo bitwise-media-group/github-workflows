@@ -13,9 +13,10 @@
 # The consuming repo must provide a mise config -- a root mise.toml, or the
 # shared task library (bitwise-media-group/make) mounted at .mise/ -- defining
 # whichever of the canonical tasks do real work there:
-#   lint  -- all check-mode static analysis (prettier --check, markdownlint, golangci-lint, govulncheck, ...)
+#   lint  -- all check-mode static analysis (bun fmt --check, markdownlint, golangci-lint, govulncheck, ...)
 #   build -- compile / build dist/
-#   test  -- tests with coverage, emitting coverage/cobertura-coverage.xml (and optionally coverage/junit.xml)
+#   test  -- tests with coverage, emitting coverage/coverage.out (go), coverage/lcov.info (node on bun, swift)
+#            or coverage/cobertura-coverage.xml (everything else), and optionally coverage/junit.xml
 #   e2e   -- end-to-end tests (only run when the caller sets e2e: true)
 # There are no no-op stubs: this workflow discovers the task list
 # (`mise tasks ls --name-only`) and skips absent tasks. A repo with no mise
@@ -125,7 +126,8 @@ jobs:
       # ignore` keeps a repo that happens to produce nothing from erroring -- the
       # isolated coverage job below skips the upload when nothing was produced.
       # Go repos emit the native profile (coverage.out, which Codecov ingests
-      # directly); everything else emits Cobertura XML -- always one or the other.
+      # directly), bun test emits LCOV (lcov.info), and everything else emits
+      # Cobertura XML -- always exactly one of the three.
       - name: Upload coverage artifact
         if: ${{ matrix.target == 'test' && inputs.coverage }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -133,6 +135,7 @@ jobs:
           name: coverage-report
           path: |
             coverage/coverage.out
+            coverage/lcov.info
             coverage/cobertura-coverage.xml
           if-no-files-found: ignore
 
@@ -166,13 +169,13 @@ jobs:
           name: coverage-report
         continue-on-error: true
 
-      # The artifact holds the native Go profile or Cobertura XML, never both --
-      # upload whichever the test job produced.
+      # The artifact holds exactly one of the native Go profile, LCOV or
+      # Cobertura XML -- upload whichever the test job produced.
       - name: Upload coverage report
-        if: ${{ hashFiles('coverage.out', 'cobertura-coverage.xml') != '' }}
+        if: ${{ hashFiles('coverage.out', 'lcov.info', 'cobertura-coverage.xml') != '' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          files: ${{ hashFiles('coverage.out') && 'coverage.out' || 'cobertura-coverage.xml' }}
+          files: ${{ hashFiles('coverage.out') && 'coverage.out' || hashFiles('lcov.info') && 'lcov.info' || 'cobertura-coverage.xml' }}
           disable_search: true
           fail_ci_if_error: true
 

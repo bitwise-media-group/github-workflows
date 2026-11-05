@@ -10,14 +10,14 @@ the language.
 
 ## The canonical tasks
 
-| Task         | Run by                      | Expected to                                                                                                          |
-| ------------ | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `lint`       | `ci.yaml`                   | all check-mode static analysis: `prettier --check`, markdownlint, `go vet`, …                                        |
-| `build`      | `ci.yaml`                   | compile, or rebuild `dist/`. A committed `dist/` must match afterwards                                               |
-| `test`       | `ci.yaml`                   | run tests, writing `coverage/cobertura-coverage.xml` or `coverage/coverage.out`, and optionally `coverage/junit.xml` |
-| `e2e`        | `ci.yaml` with `e2e: true`  | end-to-end tests                                                                                                     |
-| `release`    | `release.yaml` (GoReleaser) | `goreleaser release --clean`. The workflow appends `--draft`. Must leave the tree clean                              |
-| `docs-build` | `release.yaml` (docs)       | render the Zensical site into `./site`                                                                               |
+| Task         | Run by                      | Expected to                                                                                                                                |
+| ------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lint`       | `ci.yaml`                   | all check-mode static analysis: `prettier --check`, markdownlint, `go vet`, …                                                              |
+| `build`      | `ci.yaml`                   | compile, or rebuild `dist/`. A committed `dist/` must match afterwards                                                                     |
+| `test`       | `ci.yaml`                   | run tests, writing `coverage/cobertura-coverage.xml`, `coverage/lcov.info` or `coverage/coverage.out`, and optionally `coverage/junit.xml` |
+| `e2e`        | `ci.yaml` with `e2e: true`  | end-to-end tests                                                                                                                           |
+| `release`    | `release.yaml` (GoReleaser) | `goreleaser release --clean`. The workflow appends `--draft`. Must leave the tree clean                                                    |
+| `docs-build` | `release.yaml` (docs)       | render the Zensical site into `./site`                                                                                                     |
 
 Define only the tasks that do real work. `ci.yaml` runs `mise tasks ls --name-only` and skips the rest, so there are no
 no-op stubs. `release` and `docs-build` are different: a `.goreleaser.yaml` without `release`, or a `zensical.toml`

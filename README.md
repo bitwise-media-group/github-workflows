@@ -407,10 +407,10 @@ every toolchain installed from the same mise pins:
 
 - **mise tasks** — defined in a root `mise.toml`, or by the shared toolchain
   ([`bitwise-media-group/toolchain`](https://github.com/bitwise-media-group/toolchain)) mounted as a submodule at
-  `.mise/`: `lint` (all check-mode static analysis: `prettier --check`, markdownlint, and for Go `go vet` /
-  `govulncheck`), `build`, `test` (emitting `coverage/cobertura-coverage.xml`, optionally `coverage/junit.xml`), and
-  `e2e`. Define only the tasks that do real work — CI discovers the task list and skips the rest; coverage is optional.
-  A repo with no mise config fails CI.
+  `.mise/`: `lint` (all check-mode static analysis: `bun fmt --check`, markdownlint, and for Go `go vet` /
+  `govulncheck`), `build`, `test` (emitting `coverage/coverage.out`, `coverage/lcov.info` or
+  `coverage/cobertura-coverage.xml`, optionally `coverage/junit.xml`), and `e2e`. Define only the tasks that do real
+  work — CI discovers the task list and skips the rest; coverage is optional. A repo with no mise config fails CI.
 - **Toolchains** — no `setup-go` / `setup-node` / `setup-uv`: the language runtimes (Go, Node, Python, uv) and every dev
   CLI (goreleaser, cosign, syft, the linters, …) are installed from the mise pins, sha256-verified against `mise.lock`
   and restored from the mise cache, so CI, release and local runs use identical versions. The tasks install their own
