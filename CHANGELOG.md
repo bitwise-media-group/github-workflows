@@ -1,5 +1,18 @@
 # Changelog
 
+## [8.1.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.1.0...v8.1.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **deps:** update dependency jdx/mise to v2026.10.22 ([#233](https://github.com/bitwise-media-group/github-workflows/issues/233)) ([ce65cce](https://github.com/bitwise-media-group/github-workflows/commit/ce65cce88b86d9455a6c1ea7e4777661e3b3eb23))
+* **deps:** update dependency jdx/mise to v2026.10.23 ([#235](https://github.com/bitwise-media-group/github-workflows/issues/235)) ([6291405](https://github.com/bitwise-media-group/github-workflows/commit/6291405e66ccb21d294691d17acb00c017aac110))
+* **deps:** update dependency jdx/mise to v2026.10.24 ([#236](https://github.com/bitwise-media-group/github-workflows/issues/236)) ([1249673](https://github.com/bitwise-media-group/github-workflows/commit/1249673fbb36775453c9e4daf66e8e8e9037108c))
+* **deps:** update dependency jdx/mise to v2026.10.25 ([#238](https://github.com/bitwise-media-group/github-workflows/issues/238)) ([da38673](https://github.com/bitwise-media-group/github-workflows/commit/da386731f08a097b85eb092f1b1febabda682fdc))
+* **deps:** update jdx/mise-action action to v5.2.5 ([#239](https://github.com/bitwise-media-group/github-workflows/issues/239)) ([954f8b3](https://github.com/bitwise-media-group/github-workflows/commit/954f8b32b876ca2691eb249d5ddbbbf35749ebf3))
+* **deps:** update renovatebot/github-action action to v46.3.11 ([#237](https://github.com/bitwise-media-group/github-workflows/issues/237)) ([afc64dc](https://github.com/bitwise-media-group/github-workflows/commit/afc64dca73cd92e274b78e4410c5f996b9aa8029))
+* **release:** free runner disk space before the goreleaser build ([6135ea8](https://github.com/bitwise-media-group/github-workflows/commit/6135ea8568edfca789dbb6bfc1ebb7d63023d985))
+
 ## [8.1.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.0.1...v8.1.0) (2026-10-31)
 
 
