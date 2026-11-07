@@ -1,5 +1,20 @@
 # Changelog
 
+## [8.2.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.1.1...v8.2.0) (2026-11-07)
+
+
+### Features
+
+* **ci:** upload lcov coverage ([b84aa20](https://github.com/bitwise-media-group/github-workflows/commit/b84aa20a9c124c8621701bc02ec2192cc1113c81))
+
+
+### Bug Fixes
+
+* **deps:** update dependency jdx/mise to v2026.11.0 ([#251](https://github.com/bitwise-media-group/github-workflows/issues/251)) ([eddcc70](https://github.com/bitwise-media-group/github-workflows/commit/eddcc70d71a7924806028c28d8c8af4260d787a4))
+* **deps:** update github/codeql-action action to v4.39.2 ([#250](https://github.com/bitwise-media-group/github-workflows/issues/250)) ([23553c5](https://github.com/bitwise-media-group/github-workflows/commit/23553c5efe4fb57741acd1c56b7e1978d0ebc85a))
+* **deps:** update jdx/mise-action action to v5.2.6 ([#247](https://github.com/bitwise-media-group/github-workflows/issues/247)) ([d1cc124](https://github.com/bitwise-media-group/github-workflows/commit/d1cc1240b4d97189513c40f9c61ac747c521b9d1))
+* **deps:** update renovatebot/github-action action to v46.3.12 ([#242](https://github.com/bitwise-media-group/github-workflows/issues/242)) ([2d2be51](https://github.com/bitwise-media-group/github-workflows/commit/2d2be51ee2d06287da094ca9dd7cfe5a9ae184c7))
+
 ## [8.1.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.1.0...v8.1.1) (2026-11-05)
 
 
