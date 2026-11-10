@@ -69,7 +69,7 @@ Several workflows choose a path based on which files exist at the repository roo
 | `dist/**`                                   | `ci.yaml` checks it is unchanged after `build`                          |
 | `go.mod` (root only)                        | `security.yaml` adds the `go` CodeQL leg                                |
 | `package.json`                              | `security.yaml` adds the `javascript-typescript` leg                    |
-| `zizmor.y{a,}ml` / `.github/zizmor.y{a,}ml` | `security.yaml` runs zizmor on the `actions` leg                        |
+| `zizmor.y{a,}ml` / `.github/zizmor.y{a,}ml` | `security.yaml` runs the `zizmor` job (when `actions` is scanned)       |
 | `.goreleaser.y{a,}ml`                       | `release.yaml` runs the `goreleaser` job                                |
 | `Dockerfile` / `Dockerfile.*`               | `release.yaml` sets up QEMU, buildx and ghcr, and attests image digests |
 | `zensical.toml`                             | `release.yaml` runs the `docs` job                                      |

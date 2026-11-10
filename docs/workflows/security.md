@@ -20,9 +20,10 @@ that ship a zizmor config also get a zizmor audit of their workflows, uploaded t
 
 ```mermaid
 flowchart LR
-    prep["prep<br/>detect languages → matrix"] --> a1["analyze (actions)<br/>+ zizmor if configured"]
+    prep["prep<br/>detect languages → matrix"] --> a1["analyze (actions)"]
     prep --> a2["analyze (go)<br/>autobuild with mise Go"]
     prep --> a3["analyze (javascript-typescript)"]
+    prep -->|"zizmor config + actions scanned"| z["zizmor"]
 ```
 
 1. **`prep`** checks out the repository and builds the matrix:
@@ -35,16 +36,21 @@ flowchart LR
 
    A non-empty `languages` input replaces detection with that list verbatim. `go` gets `autobuild` and anything else
    gets `none`. Only a **root** `go.mod` counts as Go: the `go.work` + `tools/go.mod` that most repositories carry for
-   `go tool addlicense` is tooling, not product code.
+   `go tool addlicense` is tooling, not product code. It also checks for a zizmor config (see step 3).
 
 2. **`analyze`** runs one leg per language (`fail-fast: false`):
    - The `go` leg alone checks out submodules and installs **only Go** from the repository's mise pins. CodeQL's
      autobuild then compiles with the same toolchain the repository's build uses. Go has no build-free mode.
    - CodeQL initialises with the language, build mode and optional `config-file`, then analyses and uploads under the
      category `/language:<lang>`.
-   - On the `actions` leg, if `zizmor.yml` or `zizmor.yaml` exists at the root or under `.github/`, zizmor audits the
-     workflows and uploads its SARIF to code scanning. In SARIF mode zizmor never fails the run. Findings appear as
-     code-scanning alerts.
+
+3. **`zizmor`** runs when `zizmor.yml` or `zizmor.yaml` exists at the root or under `.github/` **and** `actions` is in
+   the matrix. It audits the workflows and uploads its SARIF to code scanning under the `zizmor` category. In SARIF mode
+   zizmor never fails the run. Findings appear as code-scanning alerts.
+
+   It is a separate job, not a step on the `actions` leg, because zizmor-action uploads with its own pinned
+   `codeql-action`. CodeQL rejects a job whose steps use different `codeql-action` versions, so sharing a job with
+   `init` / `analyze` would fail every time the two pins drift apart.
 
 ## Requirements
 
@@ -105,5 +111,9 @@ An empty `javascript-typescript` leg fails or reports nothing : The `package.jso
 The `go` leg fails in autobuild : Autobuild needs `go` on `PATH` from the mise pins. Check that the repository's mise
 config pins Go and that `.mise/` is a committed submodule.
 
-zizmor findings don't show up : zizmor runs only on the `actions` leg and only when a config file exists at one of the
-four paths above.
+zizmor findings don't show up : The `zizmor` job runs only when a config file exists at one of the four paths above and
+`actions` is in the matrix (a `languages` input without `actions` skips it).
+
+`Loaded a configuration file for version 'X', but running version 'Y'` : Two `codeql-action` versions ran in one job.
+This workflow keeps zizmor in its own job to avoid that; a caller that adds its own `codeql-action` steps must pin them
+to one version within each job.
