@@ -20,8 +20,12 @@
 #     task rebuilds the Zensical site and the job publishes it to GitHub Pages.
 #     This is keyed off the same config-presence detection as the goreleaser
 #     path and is independent of it, so a repo can ship binaries AND publish docs from one
-#     release. Callers must grant `pages: write` for it (see the permissions note
-#     below); the consuming repo must also set Settings -> Pages -> GitHub Actions.
+#     release. By default the site is published only when a release is cut; a
+#     caller that sets always-publish-docs: true publishes it on every push to
+#     the default branch instead (the examples/ caller reads that from the
+#     ALWAYS_PUBLISH_DOCS repository variable). Callers must grant `pages: write`
+#     for it (see the permissions note below); the consuming repo must also set
+#     Settings -> Pages -> GitHub Actions.
 #   - Every other repo's release is just the release-please cut. A committed dist/
 #     is verified for freshness in CI (reusable ci.yaml), not here.
 #
@@ -39,8 +43,8 @@
 # Callers can gate follow-on work (docs publish, deploys, notifications) on the
 # workflow_call outputs below: release_created is truthy only when this run cut a
 # release, alongside the tag_name/sha/version/major/minor/patch it produced (all
-# empty otherwise). This lets a caller append a release-only job instead of, e.g.,
-# rebuilding docs on every push to main.
+# empty otherwise). This lets a caller append a release-only job (a deploy, an
+# announcement) that must not run on every push to main.
 #
 # The consuming repo provides release-please-config.json + .release-please-manifest.json.
 # Go repos add a .goreleaser.yaml (release-type: go, draft: true); Actions repos that
@@ -61,6 +65,14 @@ on:
         description: >-
           Move the floating major and minor tags (v1 and v1.1) to the release commit, for any release type. Off by
           default; set true for Actions/reusable repos whose consumers pin @v1.
+        required: false
+        default: false
+        type: boolean
+      always-publish-docs:
+        description: >-
+          Publish the Zensical docs site (a repo with a zensical.toml) on every push to the default branch, not only
+          when a release is cut. Off by default, so the site always describes the latest release; set true for a repo
+          whose docs should track main. The examples/ caller reads it from the ALWAYS_PUBLISH_DOCS repository variable.
         required: false
         default: false
         type: boolean
@@ -510,6 +522,12 @@ jobs:
   # two run in parallel; on a docs-only repo goreleaser is skipped and this runs
   # straight off release-please.
   #
+  # By default it runs only when this run cut a release, and builds the release
+  # tag. With always-publish-docs it also runs on every other trusted run on the
+  # default branch, building the pushed commit (github.sha) -- the ref guard keeps
+  # a workflow_dispatch from a feature branch from publishing unreleased docs. On a
+  # run that does cut a release, the tag is still what gets built.
+  #
   # The site is built by the repo's `docs-build` mise task (the toolchain's common
   # tasks define it as `uv sync` + `zensical build` into ./site), so a repo whose
   # docs embed generated, uncommitted content -- a demo render, chart references --
@@ -524,7 +542,9 @@ jobs:
   docs:
     needs: release-please
     if: >-
-      needs.release-please.outputs.release_created && needs.release-please.outputs.zensical &&
+      needs.release-please.outputs.zensical &&
+      (needs.release-please.outputs.release_created ||
+      (inputs.always-publish-docs && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
     runs-on: ubuntu-latest
     permissions:
@@ -534,7 +554,9 @@ jobs:
       pages: write
       # OIDC token the deploy-pages action exchanges for the Pages deploy
       id-token: write
-    # serialize Pages deployments; never cancel an in-flight publish
+    # serialize Pages deployments; never cancel an in-flight publish (a newer
+    # pending run replaces an older pending one, so pushes in quick succession
+    # still converge on the latest commit)
     concurrency:
       group: pages
       cancel-in-progress: false
@@ -542,11 +564,12 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Checkout repository at release tag
+      - name: Checkout repository at release tag or pushed commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # build the exact commit the release was tagged at
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          # build the exact commit the release was tagged at; with no release
+          # (always-publish-docs), the commit that triggered the run
+          ref: ${{ needs.release-please.outputs.tag_name || github.sha }}
           persist-credentials: false # read-only checkout; don't leave the token in .git/config
           # pull Git LFS objects so Zensical embeds real assets, not pointer files; a
           # no-op on repos that track nothing in LFS.

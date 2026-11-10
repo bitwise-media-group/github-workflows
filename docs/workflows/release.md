@@ -1,7 +1,7 @@
 ---
 description:
-  release-please releases, then GoReleaser binaries (signed, notarized, attested) and/or a Zensical docs deploy, then
-  floating major/minor tags.
+  release-please releases, then GoReleaser binaries (signed, notarized, attested) and/or a Zensical docs deploy (per
+  release, or optionally every push to main), then floating major/minor tags.
 ---
 
 # `release.yaml`
@@ -16,7 +16,8 @@ merges, the run cuts the release. What follows depends on which config files the
 | both               | both jobs, in parallel                                                                            |
 | neither            | the release-please cut is the release                                                             |
 
-With `vanity-tags: true`, a final job moves the floating `vX` and `vX.Y` tags to the release commit.
+With `vanity-tags: true`, a final job moves the floating `vX` and `vX.Y` tags to the release commit. With
+`always-publish-docs: true`, the `docs` job also runs on every push to `main`, not only when a release is cut.
 
 !!! abstract "At a glance"
 
@@ -31,7 +32,7 @@ With `vanity-tags: true`, a final job moves the floating `vX` and `vX.Y` tags to
 flowchart TD
     rp["release-please<br/>detect config · cut release · tag · release PR"]
     rp -->|"release cut + .goreleaser.yaml"| gr["goreleaser<br/>mise run release --draft → attest → publish → merge cask"]
-    rp -->|"release cut + zensical.toml"| docs["docs<br/>mise run docs-build → GitHub Pages"]
+    rp -->|"zensical.toml + (release cut or always-publish-docs)"| docs["docs<br/>mise run docs-build → GitHub Pages"]
     rp --> vt
     gr -->|"success or skipped"| vt["vanity-tags<br/>move vX and vX.Y"]
 ```
@@ -79,12 +80,24 @@ Runs only when a release was cut, `.goreleaser.yaml` exists, and the trigger is 
 
 Same trigger allowlist, gated on `zensical.toml`. Independent of `goreleaser`, so the two run in parallel.
 
-1. Checks out the release tag, with Git LFS objects and submodules.
+When it runs is a per-repository choice:
+
+| `always-publish-docs` | Publishes                                                                | Builds                                                        |
+| --------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `false` (default)     | only on a run that cut a release, so the site matches the latest release | the release tag                                               |
+| `true`                | on every run on the default branch, release or not                       | the release tag on a release run, otherwise the pushed commit |
+
+The always-publish path also requires the run's ref to be the default branch, so a `workflow_dispatch` from a feature
+branch never publishes unreleased docs. The [caller](#caller) sets the input from the `ALWAYS_PUBLISH_DOCS` repository
+variable, so a repository opts in by setting that variable to `true` without editing its caller.
+
+1. Checks out the release tag (or, with no release, the pushed commit), with Git LFS objects and submodules.
 2. Installs mise (cache on: nothing here is signed).
 3. Fails if no `docs-build` mise task exists. The toolchain's common tasks define it.
 4. Runs `mise run docs-build`, which renders into `./site`.
 5. Configures Pages, uploads `./site`, and deploys to the `github-pages` environment. Deploys are serialised in the
-   `pages` concurrency group and never cancelled.
+   `pages` concurrency group and never cancelled; with `always-publish-docs`, a newer pending deploy replaces an older
+   pending one, so a burst of pushes converges on the latest commit.
 
 A repository whose docs embed generated content overrides `docs-build` to generate it first. This repository does that.
 See [Working on the docs](../reference/docs.md).
@@ -101,7 +114,8 @@ with no checkout.
 - **GoReleaser path:** `.goreleaser.yaml` with `release-type: go` and `release.draft: true`, plus a `release` mise task
   (from the go or swift archetype, or your own). An overridden `release` task must leave the git tree clean.
 - **Docs path:** `zensical.toml`, `pyproject.toml`, `uv.lock`, a `docs-build` mise task, and **Settings → Pages → Source
-  → GitHub Actions**.
+  → GitHub Actions**. To publish on every push to `main`, also set the repository variable `ALWAYS_PUBLISH_DOCS` to
+  `true` (**Settings → Secrets and variables → Actions → Variables**).
 - **Container images:** a root `Dockerfile` / `Dockerfile.*` and a `dockers_v2` block. Images go to `ghcr.io` with the
   job's `packages: write`.
 - **Auto-merged release PRs:** pass `app-client-id` + `app-private-key` (the FF Merge App). A release PR pushed with the
@@ -186,6 +200,12 @@ and install the App on the tap repository.
 
 `no open cask pull request from bot/<repo>-<tag>` : A warning, not a failure: the cask config pushes straight to `main`
 rather than opening a PR. Switch it to the branch + `pull_request` form above.
+
+Docs publish on every push to `main` but should only follow releases : The repository variable `ALWAYS_PUBLISH_DOCS` is
+`true` (or the caller hard-codes `always-publish-docs: true`). Delete the variable or set it to anything else.
+
+`ALWAYS_PUBLISH_DOCS` is set but docs still only publish on release : The value must be exactly `true` (lower case), the
+caller must pass `always-publish-docs` (older copies of the example don't), and the push must be to the default branch.
 
 Duplicate release PRs : Runs queue in the `release` concurrency group, and the two-pass design prevents the draft-tag
 race. A duplicate usually means the tag was deleted by hand after a release.

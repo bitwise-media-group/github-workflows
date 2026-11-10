@@ -99,15 +99,18 @@ _Any repo._ Runs release-please (two-pass), then branches by detection: a repo w
 Developer ID-signed and notarized macOS binaries, optional Homebrew cask, SLSA attestation) — Go, goreleaser, cosign and
 syft all come from the repo's mise pins, so the release is built by the same versions as `mise run release` locally;
 every other repo's release is just the release-please cut. A repo with a `zensical.toml` also rebuilds its Zensical docs
-site (`mise run docs-build`) and publishes it to GitHub Pages — gated on an actual release and keyed off config presence
-exactly like the GoReleaser path, so it is independent of GoReleaser (a repo can ship binaries and docs from one
-release). With `vanity-tags: true` it also moves the floating major and minor tags (`v1` and `v1.1`). A committed
-`dist/` is verified for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
+site (`mise run docs-build`) and publishes it to GitHub Pages — gated on an actual release (or, with
+`always-publish-docs: true`, on every push to the default branch) and keyed off config presence exactly like the
+GoReleaser path, so it is independent of GoReleaser (a repo can ship binaries and docs from one release). With
+`vanity-tags: true` it also moves the floating major and minor tags (`v1` and `v1.1`). A committed `dist/` is verified
+for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
 
 - **Inputs:** `vanity-tags` (default `false`; move the floating `v1` / `v1.1` tags — set it for Actions/reusable repos
-  whose consumers pin `@v1`), `app-client-id` (optional; author the release as a GitHub App rather than `GITHUB_TOKEN` —
-  `vars.FF_MERGE_CLIENT_ID`; required when `.goreleaser.yaml` publishes a Homebrew cask), `homebrew-tap` (default
-  `homebrew-tap`; the tap repository in the caller's org that the cask is pushed to).
+  whose consumers pin `@v1`), `always-publish-docs` (default `false`; publish the docs site on every push to the default
+  branch, not only on release — the example caller reads it from the `ALWAYS_PUBLISH_DOCS` repository variable),
+  `app-client-id` (optional; author the release as a GitHub App rather than `GITHUB_TOKEN` — `vars.FF_MERGE_CLIENT_ID`;
+  required when `.goreleaser.yaml` publishes a Homebrew cask), `homebrew-tap` (default `homebrew-tap`; the tap
+  repository in the caller's org that the cask is pushed to).
 - **Secrets:** `app-private-key` — optional; required only when `app-client-id` is set (`secrets.FF_MERGE_PRIVATE_KEY`).
   `macos-sign-p12`, `macos-sign-password`, `macos-notary-issuer-id`, `macos-notary-key-id`, `macos-notary-key` —
   optional; only read by a `.goreleaser.yaml` with a `notarize.macos` block (`secrets.MACOS_SIGN_P12` /
@@ -152,9 +155,12 @@ release). With `vanity-tags: true` it also moves the floating major and minor ta
   logs `df -h /` before and after.
 - **Publishing docs:** add a `zensical.toml` (plus `pyproject.toml` + `uv.lock`) at the repo root and set **Settings →
   Pages → Source → GitHub Actions**. On each release the `docs` job runs `mise run docs-build` and deploys `./site` to
-  Pages. The toolchain's common tasks define `docs-build` as a plain Zensical build; a repo whose docs embed generated,
-  uncommitted content (a demo render, chart references) overrides the task to generate it first, with its tools from the
-  same mise pins.
+  Pages. To publish on every push to `main` instead (building the pushed commit, or the release tag on a release run),
+  set the repository variable `ALWAYS_PUBLISH_DOCS` to `true`; the example caller passes it as `always-publish-docs`, so
+  the choice is per repository with an unchanged caller. The always-publish path only fires on the default branch. The
+  toolchain's common tasks define `docs-build` as a plain Zensical build; a repo whose docs embed generated, uncommitted
+  content (a demo render, chart references) overrides the task to generate it first, with its tools from the same mise
+  pins.
 - **Customising the release:** both paths run mise tasks — `release` (the go and swift toolchain archetypes define it as
   `goreleaser release --clean`; the workflow appends `--draft`) and `docs-build` — so a repo changes how it releases by
   overriding the task, not the workflow. A `release` override must leave the git tree clean. A `.goreleaser.yaml` or
@@ -189,6 +195,7 @@ jobs:
     uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@v2
     with:
       vanity-tags: true # for Actions/reusable repos pinned @v1
+      always-publish-docs: ${{ vars.ALWAYS_PUBLISH_DOCS == 'true' }} # optional; docs on every push, not just releases
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }} # optional; also mints the Homebrew tap token
     secrets:
       app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }} # optional; required with app-client-id
@@ -424,9 +431,10 @@ every toolchain installed from the same mise pins:
 - **Release** — `release-please-config.json` + `.release-please-manifest.json`; a `.goreleaser.yaml`
   (`release-type: go`, `draft: true`) selects the GoReleaser path, which runs `mise run release --draft`; otherwise the
   release is just the release-please cut. A `zensical.toml` selects the docs path (`mise run docs-build`, then publish
-  `./site` to Pages; needs Pages set to GitHub Actions and `pages: write`). Set `vanity-tags: true` to move the floating
-  `v1` / `v1.1` tags (after GoReleaser when present); a committed `dist/` is verified in CI, not here. To sign and
-  notarize macOS binaries, add a `notarize.macos` block to `.goreleaser.yaml` and pass the `macos-*` secrets (see
+  `./site` to Pages; needs Pages set to GitHub Actions and `pages: write`) on each release, or on every push to `main`
+  with `always-publish-docs: true`. Set `vanity-tags: true` to move the floating `v1` / `v1.1` tags (after GoReleaser
+  when present); a committed `dist/` is verified in CI, not here. To sign and notarize macOS binaries, add a
+  `notarize.macos` block to `.goreleaser.yaml` and pass the `macos-*` secrets (see
   [macOS notarization: org setup](#macos-notarization-org-setup)).
 
 A caller may mix a reusable-workflow job with normal jobs — e.g. a Go CLI keeps its product-specific `integration` /
