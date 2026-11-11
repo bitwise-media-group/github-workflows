@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.2.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.2.0...v8.2.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ci:** don't fail fork PRs on tokenless Codecov upload errors ([0d82d5f](https://github.com/bitwise-media-group/github-workflows/commit/0d82d5f9301d342ad13c8a6cde0f25858439c79d))
+* **deps:** update dependency jdx/mise to v2026.11.4 ([#267](https://github.com/bitwise-media-group/github-workflows/issues/267)) ([450f97e](https://github.com/bitwise-media-group/github-workflows/commit/450f97e58cda3a02d73881acba6f41d6b1a3eecc))
+
 ## [8.2.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.1.1...v8.2.0) (2026-11-11)
 
 
