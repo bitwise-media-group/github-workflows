@@ -1,0 +1,305 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# patchy-publish: publish a repository's `patchy build` artifacts on its release
+# pipeline, as immutable channel builds. Called from a job in the repository's
+# own release workflow, after the reusable release workflow, so the signature's
+# identity is that repository's workflow -- a composite action does not change
+# the job's identity, where a reusable workflow would (and github-workflows is
+# public: anyone can call a reusable workflow, so its identity proves nothing
+# about the caller).
+#
+#   mode: edge     no release was cut: build every entry and publish it as
+#                  <next version>-edge.<UTC yyyymmddhhmmss>.g<short commit>
+#                  (plus whatever else the repo's tag templates add). The
+#                  next version is the open release pull request's, so
+#                  1.3.2 < 1.4.0-edge.* < 1.4.0.
+#   mode: promote  a release was cut: add vX.Y.Z to the newest X.Y.Z-edge.*
+#                  build of every entry (patchy build promote), after checking
+#                  each was built from a commit whose artifact tree matches the
+#                  release commit's. Nothing is rebuilt.
+#
+# Nothing org- or cloud-specific lives in the repository: the registries and
+# the signing config come from the inputs (org variables), written as a lower
+# patchy config layer (~/.config/patchy/config.yaml) beneath the repository's
+# patchy.yaml, which carries only its build: block. Leave the inputs for a
+# cloud empty and it is skipped, so adding AWS later is a matter of setting
+# variables. Signing is keyless by default (the identity is this job's
+# workflow, https://github.com/<owner>/<repo>/.github/workflows/<file>@<ref>),
+# or KMS when signing-kms-key names a key (gcpkms:// or awskms://).
+#
+# The caller checks out with submodules (the toolchain's mise config pins
+# patchy and cosign) and grants id-token: write.
+name: patchy-publish
+description: Publish patchy build artifacts as immutable edge builds, or promote the newest edge build to a release
+
+inputs:
+  mode:
+    description: "edge (no release was cut) or promote (a release was cut)"
+    required: true
+  version:
+    description: >-
+      promote: the released version, X.Y.Z (the release workflow's version output). edge: the next version; empty
+      reads it from the open release pull request's .release-please-manifest.json, else bumps the last release's
+      patch.
+    required: false
+    default: ""
+  release-branch:
+    description: The release-please pull request branch the next version is read from.
+    required: false
+    default: release-please--branches--main
+  google-registry:
+    description: >-
+      Artifact Registry URL, <location>-docker.pkg.dev/<project>/<repository> (e.g. vars.PLATFORM_REGISTRY);
+      published as the registry named google. Empty skips Google.
+    required: false
+    default: ""
+  google-workload-identity-provider:
+    description: Workload Identity Federation provider the Google login exchanges the job's OIDC token through.
+    required: false
+    default: ""
+  google-service-account:
+    description: Service account the Google login impersonates; it needs push rights on google-registry.
+    required: false
+    default: ""
+  aws-registry:
+    description: >-
+      ECR registry URL, <account>.dkr.ecr.<region>.amazonaws.com/<prefix> (e.g. vars.AWS_PLATFORM_REGISTRY);
+      published as the registry named aws. Empty skips AWS.
+    required: false
+    default: ""
+  aws-role:
+    description: IAM role the AWS login assumes through the job's OIDC token; it needs push rights on aws-registry.
+    required: false
+    default: ""
+  aws-region:
+    description: AWS region of aws-registry.
+    required: false
+    default: ""
+  signing-kms-key:
+    description: >-
+      KMS key to sign with (gcpkms://… or awskms:///…). Empty signs keylessly as this job's workflow identity.
+    required: false
+    default: ""
+  github-token:
+    description: Token for the release pull request lookup and mise's GitHub API calls.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  version:
+    description: The version the run built (edge) or promoted.
+    value: ${{ steps.version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check the inputs
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        VERSION: ${{ inputs.version }}
+        GOOGLE_REGISTRY: ${{ inputs.google-registry }}
+        AWS_REGISTRY: ${{ inputs.aws-registry }}
+      run: |
+        case "$MODE" in
+          edge) ;;
+          promote) [ -n "$VERSION" ] || { echo "::error::patchy-publish: promote needs the released version"; exit 1; } ;;
+          *) echo "::error::patchy-publish: mode must be edge or promote, not '$MODE'"; exit 1 ;;
+        esac
+        if [ -z "$GOOGLE_REGISTRY$AWS_REGISTRY" ]; then
+          echo "::error::patchy-publish: no registry: set google-registry and/or aws-registry"
+          exit 1
+        fi
+        # Registry URLs stay private: a public repository's logs are public,
+        # so mask them (and their project/account paths) in every later
+        # step's output. The job summary rewrites them instead (below).
+        for url in "$GOOGLE_REGISTRY" "$AWS_REGISTRY"; do
+          [ -n "$url" ] || continue
+          echo "::add-mask::$url"
+          echo "::add-mask::${url#*/}"
+        done
+
+    # Signing and publishing run here, so never restore a tool store a pull
+    # request could have written (cache poisoning).
+    - name: Set up mise
+      uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      with:
+        version: v2026.10.25
+        # sha256 of the linux-x64 mise binary for the version above, from the release's
+        # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
+        sha256: 5d362ecc578dc7c146679b841dda949d6472cbf86ff5635db7afdca1b6b3fd87
+        cache: false
+
+    - name: Resolve the version
+      id: version
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        INPUT_VERSION: ${{ inputs.version }}
+        RELEASE_BRANCH: ${{ inputs.release-branch }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -euo pipefail
+        version="${INPUT_VERSION#v}"
+        if [ "$MODE" = edge ] && [ -z "$version" ]; then
+          # The release pull request carries the version the next release will
+          # have; release-please updated it earlier in this run.
+          version="$(gh api "repos/$GITHUB_REPOSITORY/contents/.release-please-manifest.json?ref=$RELEASE_BRANCH" \
+            --jq '.content' 2>/dev/null | base64 -d 2>/dev/null | jq -r '."." // empty' 2>/dev/null || true)"
+          if [ -z "$version" ]; then
+            # No release pending (only non-releasable commits since the last
+            # release): the next patch.
+            last="$(jq -r '."." // "0.0.0"' .release-please-manifest.json 2>/dev/null || echo 0.0.0)"
+            IFS=. read -r major minor patch <<<"${last%%-*}"
+            version="$major.$minor.$((patch + 1))"
+          fi
+        fi
+        echo "version=$version" >>"$GITHUB_OUTPUT"
+        echo "patchy-publish: $MODE $version"
+
+    - name: Authenticate to Google Cloud
+      id: google
+      if: inputs.google-registry != ''
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+      with:
+        workload_identity_provider: ${{ inputs.google-workload-identity-provider }}
+        service_account: ${{ inputs.google-service-account }}
+        token_format: access_token
+
+    - name: Log in to Artifact Registry
+      if: inputs.google-registry != ''
+      shell: bash
+      env:
+        ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+        REGISTRY: ${{ inputs.google-registry }}
+      run: |
+        # ~/.docker/config.json: the keychain patchy and cosign both read
+        docker login "${REGISTRY%%/*}" --username oauth2accesstoken --password-stdin <<<"$ACCESS_TOKEN"
+
+    - name: Authenticate to AWS
+      if: inputs.aws-registry != ''
+      uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+      with:
+        role-to-assume: ${{ inputs.aws-role }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Log in to ECR
+      if: inputs.aws-registry != ''
+      shell: bash
+      env:
+        REGISTRY: ${{ inputs.aws-registry }}
+        AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        aws ecr get-login-password --region "$AWS_REGION" |
+          docker login "${REGISTRY%%/*}" --username AWS --password-stdin
+
+    # The registries and signing come from here, beneath the repository's
+    # patchy.yaml: a registries list there would replace this one wholesale.
+    - name: Write the publishing config layer
+      shell: bash
+      env:
+        GOOGLE_REGISTRY: ${{ inputs.google-registry }}
+        AWS_REGISTRY: ${{ inputs.aws-registry }}
+        KMS_KEY: ${{ inputs.signing-kms-key }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$HOME/.config/patchy"
+        {
+          echo "registries:"
+          if [ -n "$GOOGLE_REGISTRY" ]; then
+            printf '  - name: google\n    url: "%s"\n' "$GOOGLE_REGISTRY"
+          fi
+          if [ -n "$AWS_REGISTRY" ]; then
+            printf '  - name: aws\n    url: "%s"\n' "$AWS_REGISTRY"
+          fi
+          echo "signing:"
+          if [ -n "$KMS_KEY" ]; then
+            printf '  provider: kms\n  kms:\n    key: "%s"\n' "$KMS_KEY"
+          else
+            # Fulcio names a job by https://github.com/<job_workflow_ref>, and
+            # in a caller's own job that is its workflow ref
+            printf '  provider: keyless\n  keyless:\n'
+            printf '    certificateIdentity: "%s/%s"\n' "$GITHUB_SERVER_URL" "$GITHUB_WORKFLOW_REF"
+            printf '    certificateOidcIssuer: https://token.actions.githubusercontent.com\n'
+            printf '    tlogUpload: true\n'
+          fi
+        } >"$HOME/.config/patchy/config.yaml"
+        sed 's/url: .*/url: <redacted>/' "$HOME/.config/patchy/config.yaml"
+
+    - name: Publish edge builds
+      if: inputs.mode == 'edge'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        VERSION: ${{ steps.version.outputs.version }}
+        CHANNEL: edge
+        GOOGLE_REGISTRY: ${{ inputs.google-registry }}
+        AWS_REGISTRY: ${{ inputs.aws-registry }}
+      run: |
+        set -euo pipefail
+        # job summaries name each registry, never its URL
+        redact() {
+          local args=()
+          [ -z "$GOOGLE_REGISTRY" ] || args+=(-e "s|$GOOGLE_REGISTRY|<google>|g")
+          [ -z "$AWS_REGISTRY" ] || args+=(-e "s|$AWS_REGISTRY|<aws>|g")
+          if [ ${#args[@]} -eq 0 ]; then cat; else sed "${args[@]}"; fi
+        }
+        # the tag templates' conventional variables (the containers
+        # archetype's): the commit, and its time for reproducible builds and
+        # ${PATCHY_TIMESTAMP}
+        GIT_COMMIT="$(git rev-parse HEAD)"
+        SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+        export GIT_COMMIT SOURCE_DATE_EPOCH
+        {
+          echo "## Edge build $VERSION"
+          echo
+        } >>"$GITHUB_STEP_SUMMARY"
+        mise exec -- patchy build --all -o markdown | redact | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Promote the newest edge builds
+      if: inputs.mode == 'promote'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        VERSION: ${{ steps.version.outputs.version }}
+        GOOGLE_REGISTRY: ${{ inputs.google-registry }}
+        AWS_REGISTRY: ${{ inputs.aws-registry }}
+      run: |
+        set -euo pipefail
+        # job summaries name each registry, never its URL
+        redact() {
+          local args=()
+          [ -z "$GOOGLE_REGISTRY" ] || args+=(-e "s|$GOOGLE_REGISTRY|<google>|g")
+          [ -z "$AWS_REGISTRY" ] || args+=(-e "s|$AWS_REGISTRY|<aws>|g")
+          if [ ${#args[@]} -eq 0 ]; then cat; else sed "${args[@]}"; fi
+        }
+        from="${VERSION}-edge.*"
+        tag="v${VERSION}"
+        mise exec -- patchy build promote --all --from "$from" --tag "$tag" --dry-run -o json >"$RUNNER_TEMP/promote.json"
+        # Each build must have come from a commit whose artifact tree is the
+        # release commit's: a release commit only bumps versions and the
+        # changelog, so the newest edge build is exactly what is released.
+        # Manifests entries carry their revision (…sha1:<commit>); an entry
+        # without one is promoted on its tag alone.
+        jq -r '.[] | .name as $n | .records[] | [$n, (.revision // "")] | @tsv' "$RUNNER_TEMP/promote.json" |
+          sort -u | while IFS=$'\t' read -r name revision; do
+            commit="${revision##*sha1:}"
+            if [ -z "$revision" ] || [ "$commit" = "$revision" ]; then
+              echo "::notice::patchy-publish: $name carries no revision; promoting on its tag"
+              continue
+            fi
+            dir="$(mise exec -- yq -r ".build.manifests[] | select(.name == \"$name\") | .path" patchy.yaml)"
+            [ -n "$dir" ] || dir="$(mise exec -- yq -r ".build.images[] | select(.name == \"$name\") | .context // \".\"" patchy.yaml)"
+            git cat-file -e "$commit^{commit}" 2>/dev/null || git fetch --quiet --depth=1 origin "$commit"
+            if ! git diff --quiet "$commit" HEAD -- "$dir"; then
+              echo "::error::patchy-publish: $name's newest edge build ($commit) differs from the release commit under $dir"
+              exit 1
+            fi
+            echo "patchy-publish: $name built from $commit, identical under $dir"
+          done
+        {
+          echo "## Release $tag"
+          echo
+        } >>"$GITHUB_STEP_SUMMARY"
+        mise exec -- patchy build promote --all --from "$from" --tag "$tag" -o markdown | redact | tee -a "$GITHUB_STEP_SUMMARY"

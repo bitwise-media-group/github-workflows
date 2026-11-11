@@ -1,0 +1,80 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Caller workflow for a repo that publishes `patchy build` artifacts (images,
+# Flux manifests) -- copy to `.github/workflows/release.yaml` instead of
+# examples/release.yaml. The reusable release workflow runs release-please;
+# the publish job then runs the patchy-publish action in this repository's own
+# job, so the artifacts' keyless signature identity is this workflow
+# (https://github.com/<org>/<repo>/.github/workflows/release.yaml@refs/heads/main):
+#
+#   no release cut  -> an immutable edge build: <next version>-edge.<ts>.g<commit>
+#   release cut     -> vX.Y.Z added to the newest edge build of that version
+#
+# The registries and the signing config come from org variables, never from the
+# repository: patchy.yaml carries only its build: block. Leave a cloud's
+# variables unset to skip it; set SIGNING_KMS_KEY to sign with a KMS key
+# instead of keylessly.
+#
+# Replace the all-zeros placeholder SHAs with the full commit SHA of the release you want
+# (the # comment names it; Renovate keeps both current) -- see README "Pinning".
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Each job grants its own scopes, so the publish job never inherits the release
+# job's write scopes.
+permissions: {}
+
+jobs:
+  release:
+    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@0000000000000000000000000000000000000000 # v8.1.1 # x-release-please-version
+    # the reusable release workflow's ceiling -- see examples/release.yaml. A
+    # reusable workflow's permissions are the union over its jobs regardless of
+    # `if:`, so a missing scope startup-fails the whole run.
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+      packages: write
+      pages: write
+    with:
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    # one publish at a time, in push order: an edge build never lands after
+    # the promotion of a release cut from a later commit
+    concurrency:
+      group: patchy-publish
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      # cloud logins and keyless signing ride the job's OIDC token
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: true # the toolchain at .mise/ pins patchy and cosign
+
+      - uses: bitwise-media-group/github-workflows/.github/actions/patchy-publish@0000000000000000000000000000000000000000 # v8.1.1 # x-release-please-version
+        with:
+          mode: ${{ needs.release.outputs.release_created == 'true' && 'promote' || 'edge' }}
+          version: ${{ needs.release.outputs.release_created == 'true' && needs.release.outputs.version || '' }}
+          google-registry: ${{ vars.PLATFORM_REGISTRY }}
+          google-workload-identity-provider: ${{ vars.GCP_WIF_PROVIDER }}
+          google-service-account: ${{ vars.GCP_MANIFEST_PUBLISHER_SA }}
+          aws-registry: ${{ vars.AWS_PLATFORM_REGISTRY }}
+          aws-role: ${{ vars.AWS_MANIFEST_PUBLISHER_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          signing-kms-key: ${{ vars.SIGNING_KMS_KEY }}

@@ -406,6 +406,15 @@ jobs:
 
 Full example: [`examples/renovate.yaml`](examples/renovate.yaml).
 
+### `patchy-publish` (action)
+
+_Repos that publish `patchy build` artifacts._ A composite action, run from a job in the repo's own release workflow
+after `release.yaml`: when no release is cut it publishes every entry as an immutable
+`<next version>-edge.<timestamp>.g<commit>` build, and when one is it adds `vX.Y.Z` to the newest edge build of that
+version, without rebuilding. Registries and signing (keyless as the repo's own workflow, or a KMS key) come from org
+variables, never the repository, and registry URLs are masked in the run. See
+[docs/actions/patchy-publish.md](docs/actions/patchy-publish.md) and `examples/release-patchy.yaml`.
+
 ## Consumer contracts
 
 The reusable workflows stay free of per-repo configuration by assuming a small contract. The **mise config is the

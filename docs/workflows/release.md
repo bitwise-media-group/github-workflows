@@ -19,6 +19,10 @@ merges, the run cuts the release. What follows depends on which config files the
 With `vanity-tags: true`, a final job moves the floating `vX` and `vX.Y` tags to the release commit. With
 `always-publish-docs: true`, the `docs` job also runs on every push to `main`, not only when a release is cut.
 
+A repository whose products are `patchy build` artifacts adds a job after this workflow that runs the
+[`patchy-publish`](../actions/patchy-publish.md) action: edge builds when no release is cut, and promotion to `vX.Y.Z`
+when one is. It runs in the caller's own job so the artifacts are signed with the repository's identity.
+
 !!! abstract "At a glance"
 
     - **Caller triggers:** `push` to `main` (plus `workflow_dispatch` to retry a run that failed at startup)

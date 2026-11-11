@@ -47,6 +47,9 @@ nav = [
     { "add-to-project.yaml" = "workflows/add-to-project.md" },
     { "renovate.yaml" = "workflows/renovate.md" },
   ] },
+  { "Actions" = [
+    { "patchy-publish" = "actions/patchy-publish.md" },
+  ] },
   { "How it works" = [
     { "The mise contract" = "concepts/mise-contract.md" },
     { "Permissions & tokens" = "concepts/permissions.md" },
