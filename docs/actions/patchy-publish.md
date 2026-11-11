@@ -41,13 +41,13 @@ Nothing org- or cloud-specific is committed. The action writes the registries an
 `~/.config/patchy/config.yaml`, a config layer beneath the repository's `patchy.yaml`, which carries only its `build:`
 block. `patchy build --dry-run`, which CI runs through the toolchain's `build` task, needs no registries at all.
 
-| Input                                                         | From                                                      | Effect                                                         |
-| ------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------- |
-| `google-registry`                                             | `vars.PLATFORM_REGISTRY`                                  | the `google` registry; empty skips Google                      |
-| `google-workload-identity-provider`, `google-service-account` | `vars.GCP_WIF_PROVIDER`, `vars.GCP_MANIFEST_PUBLISHER_SA` | the Workload Identity Federation login                         |
-| `aws-registry`                                                | `vars.AWS_PLATFORM_REGISTRY`                              | the `aws` registry; empty skips AWS                            |
-| `aws-role`, `aws-region`                                      | `vars.AWS_MANIFEST_PUBLISHER_ROLE`, `vars.AWS_REGION`     | the OIDC role login                                            |
-| `signing-kms-key`                                             | `vars.SIGNING_KMS_KEY`                                    | sign with `gcpkms://…` or `awskms:///…`; empty signs keylessly |
+| Input                                                         | From                                                                          | Effect                                                         |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `google-registry`                                             | `vars.GOOGLE_PLATFORM_REGISTRY`                                               | the `google` registry; empty skips Google                      |
+| `google-workload-identity-provider`, `google-service-account` | `vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER`, `vars.GOOGLE_MANIFEST_PUBLISHER_SA` | the Workload Identity Federation login                         |
+| `aws-registry`                                                | `vars.AWS_PLATFORM_REGISTRY`                                                  | the `aws` registry; empty skips AWS                            |
+| `aws-role`, `aws-region`                                      | `vars.AWS_MANIFEST_PUBLISHER_ROLE`, `vars.AWS_REGION`                         | the OIDC role login                                            |
+| `signing-kms-key`                                             | `vars.SIGNING_KMS_KEY`                                                        | sign with `gcpkms://…` or `awskms:///…`; empty signs keylessly |
 
 Adding a cloud is a matter of setting its variables. The registry URLs never appear in the run: they are masked in the
 logs, and the job summary names each registry (`<google>`, `<aws>`) instead.

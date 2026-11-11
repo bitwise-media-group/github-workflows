@@ -50,7 +50,7 @@ inputs:
     default: release-please--branches--main
   google-registry:
     description: >-
-      Artifact Registry URL, <location>-docker.pkg.dev/<project>/<repository> (e.g. vars.PLATFORM_REGISTRY);
+      Artifact Registry URL, <location>-docker.pkg.dev/<project>/<repository> (e.g. vars.GOOGLE_PLATFORM_REGISTRY);
       published as the registry named google. Empty skips Google.
     required: false
     default: ""

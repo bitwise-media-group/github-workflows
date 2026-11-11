@@ -71,9 +71,9 @@ jobs:
         with:
           mode: ${{ needs.release.outputs.release_created == 'true' && 'promote' || 'edge' }}
           version: ${{ needs.release.outputs.release_created == 'true' && needs.release.outputs.version || '' }}
-          google-registry: ${{ vars.PLATFORM_REGISTRY }}
-          google-workload-identity-provider: ${{ vars.GCP_WIF_PROVIDER }}
-          google-service-account: ${{ vars.GCP_MANIFEST_PUBLISHER_SA }}
+          google-registry: ${{ vars.GOOGLE_PLATFORM_REGISTRY }}
+          google-workload-identity-provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          google-service-account: ${{ vars.GOOGLE_MANIFEST_PUBLISHER_SA }}
           aws-registry: ${{ vars.AWS_PLATFORM_REGISTRY }}
           aws-role: ${{ vars.AWS_MANIFEST_PUBLISHER_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
