@@ -125,10 +125,10 @@ runs:
     - name: Set up mise
       uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       with:
-        version: v2026.10.25
+        version: v2026.11.4
         # sha256 of the linux-x64 mise binary for the version above, from the release's
         # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-        sha256: 5d362ecc578dc7c146679b841dda949d6472cbf86ff5635db7afdca1b6b3fd87
+        sha256: 0296d9cba9324106d4e0962bb94a2072902f3658813aeb3b09504947bb8ddc2b
         cache: false
 
     - name: Resolve the version
