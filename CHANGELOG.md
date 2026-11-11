@@ -1,5 +1,34 @@
 # Changelog
 
+## [8.2.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.1.1...v8.2.0) (2026-11-11)
+
+
+### Features
+
+* **actions:** publish and promote patchy build artifacts on the release pipeline ([dfc3063](https://github.com/bitwise-media-group/github-workflows/commit/dfc30637c555ca50c8f18859e7e28118274dcaf6))
+* **ci:** run the docs-build task as its own CI leg ([fbb08e6](https://github.com/bitwise-media-group/github-workflows/commit/fbb08e6f36357ebf3b59746b2cb1a540865bec7f))
+* **ci:** upload lcov coverage ([b84aa20](https://github.com/bitwise-media-group/github-workflows/commit/b84aa20a9c124c8621701bc02ec2192cc1113c81))
+* **release:** optionally publish docs on every push to main ([6033e6a](https://github.com/bitwise-media-group/github-workflows/commit/6033e6ad31dc8167ec1b8e1d30f45f55988c012e))
+
+
+### Bug Fixes
+
+* **deps:** update actions/add-to-project action to v2.0.1 ([#260](https://github.com/bitwise-media-group/github-workflows/issues/260)) ([c18daf6](https://github.com/bitwise-media-group/github-workflows/commit/c18daf615481edd02ab80c842555f86d280e3011))
+* **deps:** update dependency jdx/mise to v2026.11.0 ([#251](https://github.com/bitwise-media-group/github-workflows/issues/251)) ([eddcc70](https://github.com/bitwise-media-group/github-workflows/commit/eddcc70d71a7924806028c28d8c8af4260d787a4))
+* **deps:** update dependency jdx/mise to v2026.11.1 ([#254](https://github.com/bitwise-media-group/github-workflows/issues/254)) ([777f7ec](https://github.com/bitwise-media-group/github-workflows/commit/777f7ec9577d516908a0493c2d08bde2fb03b2e9))
+* **deps:** update dependency jdx/mise to v2026.11.2 ([#255](https://github.com/bitwise-media-group/github-workflows/issues/255)) ([17d942a](https://github.com/bitwise-media-group/github-workflows/commit/17d942aac9aaf91245d3ac22258db6a6b0eab407))
+* **deps:** update dependency jdx/mise to v2026.11.3 ([#258](https://github.com/bitwise-media-group/github-workflows/issues/258)) ([c8419eb](https://github.com/bitwise-media-group/github-workflows/commit/c8419eb6a82d08a02f4367aa7a90fd95ce8da393))
+* **deps:** update dependency jdx/mise to v2026.11.4 ([#262](https://github.com/bitwise-media-group/github-workflows/issues/262)) ([541a0da](https://github.com/bitwise-media-group/github-workflows/commit/541a0da283ce886233153ec95001710a866bb8f5))
+* **deps:** update docker/login-action action to v4.8.0 ([#256](https://github.com/bitwise-media-group/github-workflows/issues/256)) ([9a7c50d](https://github.com/bitwise-media-group/github-workflows/commit/9a7c50d256d8166e8403eda8da72238c30677737))
+* **deps:** update github/codeql-action action to v4.39.2 ([#250](https://github.com/bitwise-media-group/github-workflows/issues/250)) ([23553c5](https://github.com/bitwise-media-group/github-workflows/commit/23553c5efe4fb57741acd1c56b7e1978d0ebc85a))
+* **deps:** update github/codeql-action action to v4.39.3 ([#253](https://github.com/bitwise-media-group/github-workflows/issues/253)) ([1c6587b](https://github.com/bitwise-media-group/github-workflows/commit/1c6587bd02468cc6f99fe221ea14b5e7f8506ec7))
+* **deps:** update jdx/mise-action action to v5.2.6 ([#247](https://github.com/bitwise-media-group/github-workflows/issues/247)) ([d1cc124](https://github.com/bitwise-media-group/github-workflows/commit/d1cc1240b4d97189513c40f9c61ac747c521b9d1))
+* **deps:** update jdx/mise-action action to v5.2.7 ([#259](https://github.com/bitwise-media-group/github-workflows/issues/259)) ([4a6672c](https://github.com/bitwise-media-group/github-workflows/commit/4a6672c8aaed9b7322ae616b02989ad2893f7e45))
+* **deps:** update renovatebot/github-action action to v46.3.12 ([#242](https://github.com/bitwise-media-group/github-workflows/issues/242)) ([2d2be51](https://github.com/bitwise-media-group/github-workflows/commit/2d2be51ee2d06287da094ca9dd7cfe5a9ae184c7))
+* **deps:** update zizmorcore/zizmor-action action to v0.8.1 ([#249](https://github.com/bitwise-media-group/github-workflows/issues/249)) ([8b0b999](https://github.com/bitwise-media-group/github-workflows/commit/8b0b999041bc1e18edd68fccb44fe8007a831a3d))
+* **examples:** scope release-patchy permissions to each job ([dfc3063](https://github.com/bitwise-media-group/github-workflows/commit/dfc30637c555ca50c8f18859e7e28118274dcaf6))
+* **security:** run zizmor in its own job ([b9e904d](https://github.com/bitwise-media-group/github-workflows/commit/b9e904dcd9a67a03c52d3204f0ebfb50c6bc1790))
+
 ## [8.1.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.1.0...v8.1.1) (2026-11-05)
 
 
