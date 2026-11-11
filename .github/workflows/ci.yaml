@@ -175,13 +175,18 @@ jobs:
 
       # The artifact holds exactly one of the native Go profile, LCOV or
       # Cobertura XML -- upload whichever the test job produced.
+      #
+      # fail_ci_if_error is off for fork PRs: they get no secrets or OIDC token,
+      # so the upload is tokenless and Codecov can reject it for reasons the PR
+      # author can't fix (e.g. a spurious "repository is deactivated"). Pushes and
+      # same-repo PRs still fail loudly.
       - name: Upload coverage report
         if: ${{ hashFiles('coverage.out', 'lcov.info', 'cobertura-coverage.xml') != '' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ${{ hashFiles('coverage.out') && 'coverage.out' || hashFiles('lcov.info') && 'lcov.info' || 'cobertura-coverage.xml' }}
           disable_search: true
-          fail_ci_if_error: true
+          fail_ci_if_error: ${{ !github.event.pull_request.head.repo.fork }}
 
       - name: Download test results
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -199,7 +204,7 @@ jobs:
           # the artifact holds only this one file; don't let the action walk the tree
           files: junit.xml
           disable_search: true
-          fail_ci_if_error: true
+          fail_ci_if_error: ${{ !github.event.pull_request.head.repo.fork }}
 
   # Opt-in end-to-end tests. Kept separate from the always-on gates because e2e
   # commonly needs services or secrets and shouldn't run on every PR by default.

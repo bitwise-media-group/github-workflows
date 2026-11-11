@@ -43,8 +43,10 @@ flowchart LR
    `coverage/cobertura-coverage.xml`, plus `coverage/junit.xml`, as artifacts.
 
 2. **`coverage`**: runs after every `tasks` leg succeeds, in a **fresh checkout that never ran the build**. It downloads
-   the artifacts and uploads whichever report exists to Codecov (`fail_ci_if_error: true`). Keeping the upload in its
-   own job keeps the Codecov step away from PR-built code. It is tolerant: a repository that emits no coverage passes.
+   the artifacts and uploads whichever report exists to Codecov. A rejected upload fails the job on pushes and same-repo
+   PRs; on fork PRs, which get no secrets or OIDC token and so upload tokenless, a rejection is logged but doesn't fail
+   the PR. Keeping the upload in its own job keeps the Codecov step away from PR-built code. It is tolerant: a
+   repository that emits no coverage passes.
 
 3. **`e2e`**: only when the caller sets `e2e: true`. It has no existence check, so opting in without an `e2e` task fails
    loudly.
@@ -98,5 +100,6 @@ or include an archetype that does.
 
 `Verify dist/ is up to date` fails : Run `mise run build` locally and commit the regenerated `dist/`.
 
-Codecov upload fails : The upload uses `fail_ci_if_error: true`. Set `coverage: false` for a repository that has no
-Codecov project.
+Codecov upload fails : On pushes and same-repo PRs the upload uses `fail_ci_if_error: true`. Set `coverage: false` for a
+repository that has no Codecov project. Fork PRs upload tokenless and never fail on a Codecov error (Codecov can reject
+them with a misleading "repository is deactivated"); check the `coverage` job log if a fork PR's report is missing.
