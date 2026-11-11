@@ -1,7 +1,8 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# Reusable CI for any repo. Runs the canonical mise tasks -- lint, build, test --
+# Reusable CI for any repo. Runs the canonical mise tasks -- lint, build, test,
+# docs-build --
 # as one parallel job per task, then a Codecov upload isolated from PR-supplied
 # code. mise is the task runner and the sole source of every toolchain and dev
 # CLI the tasks invoke: the language runtimes (go, node, python, uv) come from
@@ -15,6 +16,9 @@
 # whichever of the canonical tasks do real work there:
 #   lint  -- all check-mode static analysis (bun fmt --check, markdownlint, golangci-lint, govulncheck, ...)
 #   build -- compile / build dist/
+#   docs-build -- build the documentation site (the toolchain's common task; it
+#            skips without a zensical.toml), so a broken page fails the PR
+#            rather than the release workflow's docs job
 #   test  -- tests with coverage, emitting coverage/coverage.out (go), coverage/lcov.info (node on bun, swift)
 #            or coverage/cobertura-coverage.xml (everything else), and optionally coverage/junit.xml
 #   e2e   -- end-to-end tests (only run when the caller sets e2e: true)
@@ -54,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [lint, build, test]
+        target: [lint, build, test, docs-build]
     runs-on: ubuntu-latest
     permissions:
       # check out the repository

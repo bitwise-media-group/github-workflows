@@ -1,14 +1,14 @@
 ---
 description:
-  Runs the repo's lint, build and test mise tasks as parallel jobs, verifies a committed dist/, and uploads coverage to
-  Codecov.
+  Runs the repo's lint, build, test and docs-build mise tasks as parallel jobs, verifies a committed dist/, and uploads
+  coverage to Codecov.
 ---
 
 # `ci.yaml`
 
-**Reusable Continuous Integration.** Runs the repository's canonical mise tasks (`lint`, `build`, `test`) as one
-parallel job each, checks that a committed `dist/` matches the build, and uploads coverage and test results to Codecov
-from a job that never runs PR code. An opt-in `e2e` job runs `mise run e2e`.
+**Reusable Continuous Integration.** Runs the repository's canonical mise tasks (`lint`, `build`, `test`, `docs-build`)
+as one parallel job each, checks that a committed `dist/` matches the build, and uploads coverage and test results to
+Codecov from a job that never runs PR code. An opt-in `e2e` job runs `mise run e2e`.
 
 !!! abstract "At a glance"
 
@@ -30,7 +30,7 @@ flowchart LR
     e2e["e2e<br/>(e2e: true only)"]
 ```
 
-1. **`tasks`**: a three-way matrix over `lint`, `build` and `test`. Each leg:
+1. **`tasks`**: a four-way matrix over `lint`, `build`, `test` and `docs-build`. Each leg:
    - checks out the repository with submodules, which brings in the toolchain at `.mise/`;
    - installs mise (a pinned version whose binary is sha256-verified) and every tool the repository pins, each
      checksum-verified against `mise.lock` and cached by config hash;

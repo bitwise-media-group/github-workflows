@@ -34,12 +34,12 @@ link beneath it for the fully-commented version.
 
 ### `ci.yaml`
 
-_Any repo._ Runs the canonical mise tasks — `lint`, `build`, `test` — as one parallel job each, with every toolchain
-(Go, Node, Python, uv) and dev CLI installed from the repo's mise pins, and uploads coverage to Codecov from a job
-isolated from PR-built code. Tasks the repo does not define are skipped; a repo with no mise config at all fails. A repo
-that commits its build output has its `dist/` verified up to date after `mise run build` (so a stale committed artifact
-fails the PR). An opt-in `e2e` job runs `mise run e2e`. A caller may add product-specific jobs (e.g. `integration`)
-alongside the `ci` job.
+_Any repo._ Runs the canonical mise tasks — `lint`, `build`, `test`, `docs-build` — as one parallel job each, with every
+toolchain (Go, Node, Python, uv) and dev CLI installed from the repo's mise pins, and uploads coverage to Codecov from a
+job isolated from PR-built code. Tasks the repo does not define are skipped; a repo with no mise config at all fails. A
+repo that commits its build output has its `dist/` verified up to date after `mise run build` (so a stale committed
+artifact fails the PR). An opt-in `e2e` job runs `mise run e2e`. A caller may add product-specific jobs (e.g.
+`integration`) alongside the `ci` job.
 
 - **Inputs:** `e2e` (default `false`), `coverage` (default `true`; set `false` for repos that emit no coverage or test
   results).

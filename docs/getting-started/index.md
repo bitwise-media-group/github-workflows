@@ -45,7 +45,7 @@ Most repositories in the organisation carry the full set:
 
 | You want…                                                         | Adopt                                                                                               |
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| lint, build and test on every PR, with Codecov                    | [`ci.yaml`](../workflows/ci.md)                                                                     |
+| lint, build, test and docs on every PR, with Codecov              | [`ci.yaml`](../workflows/ci.md)                                                                     |
 | CodeQL (and optionally zizmor) code scanning                      | [`security.yaml`](../workflows/security.md)                                                         |
 | release-please releases, plus GoReleaser binaries or a docs site  | [`release.yaml`](../workflows/release.md)                                                           |
 | merges that keep every commit signature (`/merge`, `/auto-merge`) | [`merge.yaml`](../workflows/merge.md) + [`merge-review-ack.yaml`](../workflows/merge-review-ack.md) |

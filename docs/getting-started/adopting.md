@@ -24,7 +24,7 @@ includes = [".mise/common/tasks.toml", ".mise/archetypes/go/tasks.toml"]
 ```
 
 A Markdown/YAML repository with nothing to compile includes only `common/`. Check that the canonical tasks exist with
-`mise tasks ls`. CI runs `lint`, `build` and `test` when they are defined and skips any that aren't. See
+`mise tasks ls`. CI runs `lint`, `build`, `test` and `docs-build` when they are defined and skips any that aren't. See
 [the mise contract](../concepts/mise-contract.md).
 
 ## 2. Copy the callers

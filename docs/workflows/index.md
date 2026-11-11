@@ -12,7 +12,7 @@ Renovate keeps those pins current.
 
 | Workflow                                       | What it does                                                                                                                              |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [`ci.yaml`](ci.md)                             | Runs the repo's `lint`, `build` and `test` mise tasks as parallel jobs, verifies a committed `dist/`, uploads to Codecov                  |
+| [`ci.yaml`](ci.md)                             | Runs the repo's `lint`, `build`, `test` and `docs-build` mise tasks as parallel jobs, verifies a committed `dist/`, uploads to Codecov    |
 | [`security.yaml`](security.md)                 | CodeQL over `actions`, plus `go` and `javascript-typescript` when detected; zizmor when the repo opts in                                  |
 | [`release.yaml`](release.md)                   | release-please, then GoReleaser (signed, notarized, attested) and/or a Zensical docs deploy (per release or per push), then floating tags |
 | [`merge.yaml`](merge.md)                       | Signature-preserving fast-forward merge: `/merge` now, or `/auto-merge` once approved and green                                           |

@@ -3,7 +3,7 @@
 
 # Caller workflow -- copy to `.github/workflows/ci.yaml` in any repo. It owns the
 # push/pull_request triggers; all the work lives in the reusable ci workflow,
-# which runs the canonical mise tasks (lint, build, test) as one job each with
+# which runs the canonical mise tasks (lint, build, test, docs-build) as one job each with
 # every toolchain (go, node, python, uv) and dev CLI installed from the repo's
 # mise pins -- no setup-go / setup-node / setup-uv.
 #
