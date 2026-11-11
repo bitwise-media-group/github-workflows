@@ -365,9 +365,13 @@ run to the calling repository through the environment (autodiscover off, `reposi
 the caller listens for `issues: [edited]` and `pull_request: [edited]`: a human ticking a checkbox in the Dependency
 Dashboard issue or a Renovate PR body (rebase/retry, create rate-limited PRs, …) is a body edit, and the job runs
 Renovate immediately instead of at the next tick. Renovate's own body rewrites (a Bot sender) are filtered out so a run
-never triggers the next one, and edits to any other issue or PR skip the job. The merge model is the org bot's:
-API-created Verified commits, the App's pull-request ruleset bypass for squash-merging green in-policy PRs, one
-automerge per base branch per run. The App token is scoped to the calling repository, so the config repository must be
+never triggers the next one, and edits to any other issue or PR skip the job. Two more triggers drain the automerge
+queue without waiting for the cron, which GitHub fires late and irregularly: `workflow_run` (`completed`) runs Renovate
+when a required workflow finishes green on a same-repo `renovate/**` PR, and `push` to the default branch runs it again
+after every merge. Renovate merges at most two PRs per run (it stops after one automerge and restarts once), in its own
+order rather than the triggering PR's, so each merge's push starts the run that merges the next green PR until none is
+left. The merge model is the org bot's: API-created Verified commits, the App's pull-request ruleset bypass for
+squash-merging green in-policy PRs. The App token is scoped to the calling repository, so the config repository must be
 public (it is).
 
 - **Inputs:** `app-client-id` (required; `vars.RENOVATE_CLIENT_ID`), `config-repository` (default
@@ -376,10 +380,12 @@ public (it is).
   `info`).
 - **Secrets:** `app-private-key` — required (`secrets.RENOVATE_PRIVATE_KEY`).
 - **Permissions (caller grants):** none — the App token does the privileged work, so the caller sets `permissions: {}`.
-- **Triggers (the caller owns it):** `schedule` (hourly — Renovate automerges one PR per base branch per run, so the
-  cron is also the merge throughput), `workflow_dispatch` (forwarding `dry-run` / `log-level`), `issues` (`edited`) and
-  `pull_request` (`edited`). The `pull_request` trigger leaves a skipped job on every PR body edit that is not a
-  Renovate checkbox; that is the price of reacting to the checkbox at all.
+- **Triggers (the caller owns it):** `schedule` (hourly backstop), `workflow_dispatch` (forwarding `dry-run` /
+  `log-level`), `issues` (`edited`), `pull_request` (`edited`), `workflow_run` (`completed` on `renovate/**`, listing
+  every workflow automerge waits on — the same names as `merge.yaml`'s list) and `push` (`main`). The `pull_request`
+  trigger leaves a skipped job on every PR body edit that is not a Renovate checkbox; that is the price of reacting to
+  the checkbox at all. `workflow_run` needs a `zizmor: ignore[dangerous-triggers]` comment; it only starts a Renovate
+  run and never checks out PR code.
 - **Org setup:** the "Renovate" App installed on the repo, exposed as the `RENOVATE_CLIENT_ID` variable +
   `RENOVATE_PRIVATE_KEY` secret (org-level, all repositories). Keep the org-wide bot off a repo that runs this caller —
   exclude it in the org bot's `autodiscoverFilter`, or retire that loop once every repo carries the caller — since two
@@ -394,6 +400,12 @@ on:
     types: [edited]
   pull_request:
     types: [edited]
+  workflow_run:
+    workflows: ["Continuous Integration", "Security Analysis"]
+    types: [completed]
+    branches: ["renovate/**"]
+  push:
+    branches: [main]
 permissions: {}
 jobs:
   renovate:

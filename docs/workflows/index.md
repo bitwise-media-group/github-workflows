@@ -19,7 +19,7 @@ Renovate keeps those pins current.
 | [`merge-review-ack.yaml`](merge-review-ack.md) | Companion to `merge.yaml` that turns an approving review into a merge attempt, fork PRs included                                          |
 | [`merge-notice.yaml`](merge-notice.md)         | Posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                       |
 | [`add-to-project.yaml`](add-to-project.md)     | Adds new issues to the org's Projects v2 Roadmap board with a GitHub App token                                                            |
-| [`renovate.yaml`](renovate.md)                 | Runs the org's Renovate bot against just this repo, on its own schedule and on dashboard checkbox ticks                                   |
+| [`renovate.yaml`](renovate.md)                 | Runs the org's Renovate bot against just this repo: on its schedule, checkbox ticks, and as soon as its PRs go green                      |
 
 ## At a glance
 

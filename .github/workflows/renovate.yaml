@@ -19,12 +19,27 @@
 # arrive from the App, a Bot sender, and are filtered out; otherwise every run would
 # trigger the next.
 #
+# Two more triggers drain the automerge queue without waiting for the cron (which
+# GitHub fires late and irregularly -- hours apart, not hourly). Renovate stops
+# processing branches after its first automerge (the base branch moved) and restarts
+# once, so a run merges at most two PRs -- in its own branch order, not necessarily
+# the PR whose event started the run. So:
+#   workflow_run [completed] -- a required workflow (the caller names them) finished
+#                               green on a same-repo renovate/* PR: one just became
+#                               mergeable, run now.
+#   push [default branch]     -- the base branch moved, usually by Renovate's own
+#                               squash-merge (an App-token push, which does trigger
+#                               workflows). That run merges the next green PR, its
+#                               merge pushes again, and so on; the chain ends when a
+#                               run merges nothing. A PR whose workflow_run was spent
+#                               on a run that merged a different PR is picked up here.
+# Neither checks out or runs PR code -- Renovate only reads the PR's check results.
+#
 # The merge model is the org bot's, unchanged (renovate-config's README has the
 # detail): the App installation token creates commits through the GitHub API
 # (platformCommit), so they show Verified and satisfy required_signatures; the App is
 # a bypass actor on the pull-request ruleset, so Renovate squash-merges its own green
-# in-policy PRs via the API on a later run; and Renovate automerges at most one PR per
-# base branch per run, so the hourly cron is also the merge throughput.
+# in-policy PRs via the API on a later run (at most two per run, see above).
 #
 # Nothing bot-side is duplicated here. The job checks out the config repository and
 # hands renovate-global.json5 to Renovate unchanged, then pins the run to this one
@@ -34,7 +49,7 @@
 # else), which is why the config repository must be public -- it is.
 #
 # Runs via workflow_call from a thin caller (examples/renovate.yaml) that owns the
-# schedule / workflow_dispatch / issues / pull_request triggers.
+# schedule / workflow_dispatch / issues / pull_request / workflow_run / push triggers.
 name: Reusable Renovate
 
 on:
@@ -86,7 +101,10 @@ jobs:
     # present only when the body changed, and a checkbox tick is a body edit) of the
     # Dependency Dashboard issue or of a renovate/* PR the bot opened. The bot's own
     # rewrites (sender type Bot) never re-trigger, and edits to any other issue or PR
-    # skip the job. Any other event a caller wires up is ignored.
+    # skip the job. workflow_run runs only for a successful pull_request run on a
+    # renovate/* branch of this repository (a fork's same-named branch, a failed run,
+    # or a push/schedule run of the same workflow skip). push runs only for the default
+    # branch. Any other event a caller wires up is ignored.
     if: >-
       github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issues' && github.event.action == 'edited' &&
@@ -94,7 +112,13 @@ jobs:
        github.event.issue.user.type == 'Bot' && github.event.issue.title == 'Dependency Dashboard') ||
       (github.event_name == 'pull_request' && github.event.action == 'edited' &&
        github.event.changes.body && github.event.sender.type == 'User' &&
-       github.event.pull_request.user.type == 'Bot' && startsWith(github.event.pull_request.head.ref, 'renovate/'))
+       github.event.pull_request.user.type == 'Bot' && startsWith(github.event.pull_request.head.ref, 'renovate/')) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'pull_request' &&
+       startsWith(github.event.workflow_run.head_branch, 'renovate/') &&
+       github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (github.event_name == 'push' &&
+       github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
     runs-on: ubuntu-latest
     # strictly one run per repository at a time: parallel runs would race on branch
     # pushes and automerge. Queued, never cancelled -- a checkbox tick that lands
@@ -177,13 +201,17 @@ jobs:
         if: always()
         run: sudo chown -R "$(whoami)" /tmp/renovate/
 
-      # Saved only from schedule / workflow_dispatch runs. An issues-triggered run (a
-      # dashboard checkbox) gets a read-only cache token on the default branch, so its
-      # save fails with "cache write denied"; a pull_request run would save under the
-      # PR's ref, a scope later default-branch runs cannot restore from. Both still
-      # restore above -- the cache just advances on the next scheduled run.
+      # Saved only from schedule / workflow_dispatch / push (default branch) runs. An
+      # issues-triggered run (a dashboard checkbox) gets a read-only cache token on the
+      # default branch, so its save fails with "cache write denied"; workflow_run is
+      # left out for the same reason (an event-triggered run, not a push to the ref); a
+      # pull_request run would save under the PR's ref, a scope later default-branch
+      # runs cannot restore from. All of them still restore above -- the cache just
+      # advances on the next saving run.
       - name: Save repository cache
-        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        if: >-
+          always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'push')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/renovate/cache/renovate/repository
