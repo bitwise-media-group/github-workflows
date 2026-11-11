@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.3.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.2.1...v8.3.0) (2026-11-11)
+
+
+### Features
+
+* **renovate:** run on renovate/* CI completion and default-branch pushes ([5d8e371](https://github.com/bitwise-media-group/github-workflows/commit/5d8e371c132d91c252663851680c701795acce9d))
+
 ## [8.2.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.2.0...v8.2.1) (2026-11-11)
 
 
