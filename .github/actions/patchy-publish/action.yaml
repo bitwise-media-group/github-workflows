@@ -227,6 +227,19 @@ runs:
         } >"$HOME/.config/patchy/config.yaml"
         sed 's/url: .*/url: <redacted>/' "$HOME/.config/patchy/config.yaml"
 
+    # Image entries (a repo-root Dockerfile / Dockerfile.*, the release
+    # workflow's gate): patchy's multi-platform OCI export needs a
+    # docker-container buildx builder, and QEMU binfmt lets the non-native
+    # platform's RUN steps execute on the amd64 runner. Promotion builds
+    # nothing, so only edge mode sets them up.
+    - name: Set up QEMU
+      if: inputs.mode == 'edge' && hashFiles('Dockerfile', 'Dockerfile.*') != ''
+      uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+    - name: Set up docker buildx
+      if: inputs.mode == 'edge' && hashFiles('Dockerfile', 'Dockerfile.*') != ''
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
     - name: Publish edge builds
       if: inputs.mode == 'edge'
       shell: bash

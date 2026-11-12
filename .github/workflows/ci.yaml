@@ -109,6 +109,21 @@ jobs:
             echo "no '$TARGET' task defined -- skipping"
           fi
 
+      # Image builds (a repo-root Dockerfile / Dockerfile.*, the same gate the
+      # release workflow uses): `build` may run a multi-platform image build --
+      # `patchy build --dry-run` in the containers archetype -- which needs a
+      # docker-container buildx builder for the OCI export and QEMU binfmt so
+      # the non-native platform's RUN steps can execute on the amd64 runner
+      # (without it they fail with "exec format error"). Only the build job
+      # builds images, and image-less repos skip both.
+      - name: Setup QEMU
+        if: ${{ matrix.target == 'build' && steps.task.outputs.run == 'true' && hashFiles('Dockerfile', 'Dockerfile.*') != '' }}
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Setup docker buildx
+        if: ${{ matrix.target == 'build' && steps.task.outputs.run == 'true' && hashFiles('Dockerfile', 'Dockerfile.*') != '' }}
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
       - name: Run ${{ matrix.target }}
         if: steps.task.outputs.run == 'true'
         env:

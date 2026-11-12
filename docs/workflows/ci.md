@@ -36,6 +36,8 @@ flowchart LR
      checksum-verified against `mise.lock` and cached by config hash;
    - asks `mise tasks ls --name-only` whether the task exists and **skips** the leg if it doesn't, so there are no no-op
      stubs;
+   - on the `build` leg of a repository with a root `Dockerfile` / `Dockerfile.*`, sets up QEMU and a `docker-container`
+     buildx builder, so a multi-platform image build (`patchy build --dry-run`) can run its non-native `RUN` steps;
    - runs `mise run <task>`.
 
    The `build` leg then runs `git diff --exit-code -- dist` when `dist/` exists. A stale committed bundle, such as a

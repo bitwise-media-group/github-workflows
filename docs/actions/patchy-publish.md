@@ -20,6 +20,9 @@ Every tag is immutable, and a channel is its newest build: consumers follow edge
 the **next** version, read from the open release pull request, so `1.3.2` < `1.4.0-edge.*` < `1.4.0`. With no release
 pending, it bumps the last release's patch.
 
+Edge mode in a repository with a root `Dockerfile` / `Dockerfile.*` also sets up QEMU and a `docker-container` buildx
+builder first, so patchy's multi-platform image entries can run their non-native `RUN` steps.
+
 ## Why an action, not a reusable workflow
 
 Keyless signatures are only as specific as the identity in their certificate. A job's Fulcio identity is the workflow
