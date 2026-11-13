@@ -31,7 +31,7 @@ permissions: {}
 
 jobs:
   release:
-    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@0000000000000000000000000000000000000000 # v8.3.0 # x-release-please-version
+    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@0000000000000000000000000000000000000000 # v8.3.1 # x-release-please-version
     # the reusable release workflow's ceiling -- see examples/release.yaml. A
     # reusable workflow's permissions are the union over its jobs regardless of
     # `if:`, so a missing scope startup-fails the whole run.
@@ -67,7 +67,7 @@ jobs:
           persist-credentials: false
           submodules: true # the toolchain at .mise/ pins patchy and cosign
 
-      - uses: bitwise-media-group/github-workflows/.github/actions/patchy-publish@0000000000000000000000000000000000000000 # v8.3.0 # x-release-please-version
+      - uses: bitwise-media-group/github-workflows/.github/actions/patchy-publish@0000000000000000000000000000000000000000 # v8.3.1 # x-release-please-version
         with:
           mode: ${{ needs.release.outputs.release_created == 'true' && 'promote' || 'edge' }}
           version: ${{ needs.release.outputs.release_created == 'true' && needs.release.outputs.version || '' }}

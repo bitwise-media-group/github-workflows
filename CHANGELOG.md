@@ -1,5 +1,15 @@
 # Changelog
 
+## [8.3.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.3.0...v8.3.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* **deps:** update dependency jdx/mise to v2026.11.5 ([#274](https://github.com/bitwise-media-group/github-workflows/issues/274)) ([f2823b1](https://github.com/bitwise-media-group/github-workflows/commit/f2823b1f5bd4434bec4e90eb21bc2a3503c5de43))
+* **deps:** update dependency jdx/mise to v2026.11.6 ([#279](https://github.com/bitwise-media-group/github-workflows/issues/279)) ([983ba6b](https://github.com/bitwise-media-group/github-workflows/commit/983ba6baf4f3393b8fca7ce97de1acde969258b0))
+* **deps:** update renovatebot/github-action action to v46.3.13 ([#275](https://github.com/bitwise-media-group/github-workflows/issues/275)) ([d358ef9](https://github.com/bitwise-media-group/github-workflows/commit/d358ef9e28b92da6cdafa431ef2d3bcf241d87eb))
+* set up QEMU and buildx for multi-platform image builds in ci and patchy-publish ([60345f6](https://github.com/bitwise-media-group/github-workflows/commit/60345f6488e06e7d6a7ad3fe1efac0e88eb9ead5))
+
 ## [8.3.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.2.1...v8.3.0) (2026-11-11)
 
 
