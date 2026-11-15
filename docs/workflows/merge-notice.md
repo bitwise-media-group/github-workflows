@@ -36,7 +36,8 @@ anything, doesn't interpolate PR-controlled text, and posts a static comment wit
 ## Requirements
 
 None beyond the caller. Pair it with [`merge.yaml`](merge.md). The notice describes the `/merge` convention, so it only
-makes sense where that flow is installed.
+makes sense where that flow is installed. The job runs on the `runs-on` input, `ubuntu-latest` by default; it only calls
+the GitHub API from a bash step, so any Linux or macOS runner works.
 
 ## Interface
 

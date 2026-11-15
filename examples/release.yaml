@@ -71,6 +71,9 @@ jobs:
       # app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
       # optional -- the tap repository (in this org) the cask is pushed to
       # homebrew-tap: homebrew-tap
+      # optional -- run every job on macOS (default ubuntu-latest), for a repo whose
+      # release or docs-build task needs it; container images still need Linux
+      # runs-on: macos-latest
     secrets:
       # optional -- required only when app-client-id is set above
       # app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}

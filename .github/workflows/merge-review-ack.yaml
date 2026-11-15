@@ -26,6 +26,14 @@ name: Reusable Merge Review Ack
 
 on:
   workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the ack job. Default ubuntu-latest. It only echoes a message, so any runner works,
+          macOS hosted runners (macos-latest) included.
+        required: false
+        default: ubuntu-latest
+        type: string
 
 # no privileged work happens here; the completed run is the entire signal
 permissions: {}
@@ -36,7 +44,7 @@ jobs:
     # pull_request_review payload inside a reusable workflow, so gate on the review
     # state here and keep the caller a bare `uses:`.
     if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Acknowledge the approval
         run: |

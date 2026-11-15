@@ -52,11 +52,18 @@ flowchart LR
    `codeql-action`. CodeQL rejects a job whose steps use different `codeql-action` versions, so sharing a job with
    `init` / `analyze` would fail every time the two pins drift apart.
 
+`prep` and `analyze` run on the `runs-on` input, `ubuntu-latest` by default. With `runs-on: macos-latest` the `go` leg's
+Setup mise step installs and verifies the mise binary for that platform. **`zizmor` ignores the input** and always runs
+on `ubuntu-latest`: zizmor-action is a Docker container action, which macOS hosted runners can't run, and it reads only
+workflow YAML, so the platform makes no difference to its findings.
+
 ## Requirements
 
 - Nothing for the default `actions` leg.
 - For Go: a root `go.mod` and a mise config that pins `go`. The `go` leg fetches submodules so the toolchain at `.mise/`
   resolves.
+- `runs-on`, when set, must be a platform the repository's `mise.lock` covers for the `go` leg. See
+  [Platform](index.md#platform).
 - A repository with a **bundled `dist/`** (a JavaScript Action) should pass `config-file` pointing at a copy of
   [`examples/codeql-config.yaml`](#codeql-config), which excludes `dist/` so vendored dependencies don't raise false
   positives.
@@ -110,6 +117,9 @@ An empty `javascript-typescript` leg fails or reports nothing : The `package.jso
 
 The `go` leg fails in autobuild : Autobuild needs `go` on `PATH` from the mise pins. Check that the repository's mise
 config pins Go and that `.mise/` is a committed submodule.
+
+The `go` leg fails installing `go` : `runs-on` names a platform `mise.lock` has no entry for, and `--locked` refuses to
+install without one. Add the platform to the lock, or use a runner it covers.
 
 zizmor findings don't show up : The `zizmor` job runs only when a config file exists at one of the four paths above and
 `actions` is in the matrix (a `languages` input without `actions` skips it).

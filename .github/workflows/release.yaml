@@ -96,6 +96,16 @@ on:
         required: false
         default: homebrew-tap
         type: string
+      runs-on:
+        description: >-
+          Runner label for every job: release-please, goreleaser, docs and vanity-tags. Default ubuntu-latest.
+          Linux arm64 and macOS hosted runners (macos-latest, arm64) are supported wherever the repo's mise.lock has entries for the platform (the shared toolchain's covers
+          linux-x64, linux-arm64 and macos-arm64); Intel macOS and Windows are not.
+          Container images (a root Dockerfile) need a Linux runner; the goreleaser job's disk clean-up runs on
+          Linux only.
+        required: false
+        default: ubuntu-latest
+        type: string
     secrets:
       app-private-key:
         description: >-
@@ -181,7 +191,7 @@ concurrency:
 
 jobs:
   release-please:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       # create draft release and git tag
       contents: write
@@ -289,7 +299,7 @@ jobs:
     if: >-
       needs.release-please.outputs.release_created && needs.release-please.outputs.goreleaser &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       # upload assets and publish the draft release (and move vanity tags)
       contents: write
@@ -314,7 +324,10 @@ jobs:
       # so image drift can only make this do less. The removals run in parallel
       # (the android SDK alone takes minutes serially), and df brackets them so
       # a future disk failure shows the headroom it started with in the log.
+      # The paths and the docker prune are the Ubuntu image's, so the step runs
+      # only on a Linux runner (a macOS runs-on skips it).
       - name: Free runner disk space
+        if: runner.os == 'Linux'
         run: |
           set -eu
           df -h /
@@ -352,10 +365,11 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
+          # an exact version, and no sha256 input: the action then verifies the
+          # download for the runner's platform against the release's Sigstore-signed
+          # packslip (bound to mise's release workflow at this tag), a check a
+          # sha256 input would replace with a bare hash comparison
           version: v2026.11.7
-          # sha256 of the linux-x64 mise binary for the version above, from the release's
-          # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: 8f5426d9971eaf713b37509749174ca69cf2f08b8b25e389168dcfcab9cd1a4d
           # no cache in the release-signing job (neither mise's tool cache nor a
           # Go build cache): a cache poisoned from a less-trusted context must
           # not feed the signed, attested artifacts
@@ -445,8 +459,8 @@ jobs:
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ steps.tap-token.outputs.token }}
           # Developer ID certificate + App Store Connect API key for a
           # .goreleaser.yaml `notarize.macos` block: goreleaser's embedded quill
-          # signs and notarizes the darwin binaries in-process, on this Linux
-          # runner (no macOS runner, no Pro licence; the mise pin is past the
+          # signs and notarizes the darwin binaries in-process, on any runner,
+          # Linux included (no macOS runner needed, no Pro licence; the mise pin is past the
           # v2.5 that introduced it). Empty values are harmless --
           # goreleaser's isEnvSet treats an empty variable as unset, and a config
           # without a notarize block never reads them. The two base64 values are
@@ -546,7 +560,7 @@ jobs:
       (needs.release-please.outputs.release_created ||
       (inputs.always-publish-docs && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       # check out the source to build the site
       contents: read
@@ -583,10 +597,11 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
+          # an exact version, and no sha256 input: the action then verifies the
+          # download for the runner's platform against the release's Sigstore-signed
+          # packslip (bound to mise's release workflow at this tag), a check a
+          # sha256 input would replace with a bare hash comparison
           version: v2026.11.7
-          # sha256 of the linux-x64 mise binary for the version above, from the release's
-          # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: 8f5426d9971eaf713b37509749174ca69cf2f08b8b25e389168dcfcab9cd1a4d
 
       # A zensical.toml without the task is a broken contract (every toolchain
       # include provides docs-build), so fail rather than publish nothing.
@@ -634,7 +649,7 @@ jobs:
       !cancelled() && inputs.vanity-tags && needs.release-please.outputs.release_created &&
       (needs.goreleaser.result == 'success' || needs.goreleaser.result == 'skipped') &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       # move vanity tags
       contents: write

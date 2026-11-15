@@ -23,12 +23,19 @@ on:
         description: Pull request to comment on.
         required: true
         type: number
+      runs-on:
+        description: >-
+          Runner label for the notice job. Default ubuntu-latest. Its steps only call the GitHub API (JavaScript
+          actions and gh in bash steps), so any Linux or macOS runner works, macos-latest included.
+        required: false
+        default: ubuntu-latest
+        type: string
 
 permissions: {} # granted on the job
 
 jobs:
   notice:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       # post the informational comment on the PR
       pull-requests: write

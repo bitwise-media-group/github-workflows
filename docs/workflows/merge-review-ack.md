@@ -40,6 +40,7 @@ See [Fast-forward merging](../concepts/fast-forward-merge.md) for the full event
 
 - [`merge.yaml`](merge.md) installed, with `Merge Review Ack` in its caller's `workflow_run.workflows`.
 - The caller workflow named exactly `Merge Review Ack`, or the `workflow_run` list updated to match.
+- **Any runner.** The job runs on the `runs-on` input, `ubuntu-latest` by default, and only echoes a line.
 
 ## Interface
 

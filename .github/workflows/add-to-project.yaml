@@ -43,6 +43,13 @@ on:
         required: false
         default: OR
         type: string
+      runs-on:
+        description: >-
+          Runner label for the add job. Default ubuntu-slim. Its steps only call the GitHub API (JavaScript
+          actions only), so any hosted runner works, macOS (macos-latest) included.
+        required: false
+        default: ubuntu-slim
+        type: string
     secrets:
       app-private-key:
         description: Private key of the Project Sync GitHub App (secrets.ADD_TO_PROJECT_PRIVATE_KEY).
@@ -53,7 +60,7 @@ permissions: {}
 
 jobs:
   add:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Mint a github app installation token
         id: app

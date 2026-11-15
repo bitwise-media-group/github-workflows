@@ -36,6 +36,8 @@ adding it by hand.
   read, installed on **all repositories**. It's exposed as the org variable `ADD_TO_PROJECT_CLIENT_ID` and secret
   `ADD_TO_PROJECT_PRIVATE_KEY`. See [GitHub Apps & secrets](../setup/apps.md#project-sync).
 - The project URL, `https://github.com/orgs/<org>/projects/<n>`.
+- **Any runner.** The job runs on the `runs-on` input, `ubuntu-latest` by default. Its two JavaScript actions only call
+  the GitHub API, so any hosted runner works. See [Platform](index.md#platform).
 
 ## Interface
 

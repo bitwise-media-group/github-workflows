@@ -86,6 +86,14 @@ on:
         required: false
         default: info
         type: string
+      runs-on:
+        description: >-
+          Runner label for the renovate job. Default ubuntu-latest. Must be a Linux runner with Docker
+          (renovatebot/github-action runs Renovate in a container), e.g. a self-hosted ARC runner; macOS hosted
+          runners are not supported.
+        required: false
+        default: ubuntu-latest
+        type: string
     secrets:
       app-private-key:
         description: Private key of the org's Renovate GitHub App (secrets.RENOVATE_PRIVATE_KEY).
@@ -119,7 +127,7 @@ jobs:
        github.event.workflow_run.head_repository.full_name == github.repository) ||
       (github.event_name == 'push' &&
        github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     # strictly one run per repository at a time: parallel runs would race on branch
     # pushes and automerge. Queued, never cancelled -- a checkbox tick that lands
     # mid-run still gets its own run afterwards.

@@ -32,5 +32,21 @@ that end up skipped. See [Permissions & tokens](../concepts/permissions.md).
 
 ## Platform
 
-Every workflow runs on `ubuntu-latest`. None needs a macOS or Windows runner, including
-[macOS notarization](../setup/macos-notarization.md), which GoReleaser's embedded quill does from Linux.
+Every workflow runs on `ubuntu-latest` by default, and each takes a `runs-on` input to change that. None needs a macOS
+or Windows runner, including [macOS notarization](../setup/macos-notarization.md), which GoReleaser's embedded quill
+does from Linux. A repository whose tasks need macOS itself (a Swift package built against AVFoundation or AppKit)
+passes `runs-on: macos-latest` to `ci.yaml`, `security.yaml` and `release.yaml`.
+
+| Runner                       | Where it works                                                                                                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Linux x64 (`ubuntu-latest`)  | everywhere: the default                                                                                                                                            |
+| macOS arm64 (`macos-latest`) | every job except `renovate.yaml` and `security.yaml`'s `zizmor` (both run Docker containers); no image builds (a root `Dockerfile`) in `ci.yaml` or `release.yaml` |
+| Linux arm64                  | every job a Linux x64 runner runs, provided `mise.lock` pins linux-arm64 (the shared toolchain's does)                                                             |
+| Intel macOS                  | the jobs that install no mise, such as the `merge*`, `add-to-project`, `release-please` and `vanity-tags` jobs                                                     |
+| Windows                      | only `add-to-project.yaml` and `merge-review-ack.yaml`; every other job has bash `run:` steps                                                                      |
+
+Each `jdx/mise-action` step pins the mise version and verifies the binary for the runner's platform against the
+release's signed packslip, so one step serves every runner. What limits the platform is `mise.lock`: tools install with
+`--locked`, so a platform needs lock entries. The shared toolchain's lock covers linux-x64, linux-arm64 and macos-arm64,
+which is why Intel macOS can't run the mise jobs. The `zizmor` job ignores `runs-on` and stays on `ubuntu-latest`.
+`renovate.yaml` honours it but needs a Linux runner with Docker, such as a self-hosted ARC runner.

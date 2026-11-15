@@ -49,6 +49,15 @@ on:
         required: false
         default: ""
         type: string
+      runs-on:
+        description: >-
+          Runner label for the prep and analyze jobs. Default ubuntu-latest. Linux arm64 and macOS hosted
+          runners (macos-latest, arm64) are supported wherever the repo's mise.lock has entries for the platform (the shared toolchain's covers
+          linux-x64, linux-arm64 and macos-arm64); Intel macOS and Windows are not. The zizmor job ignores it
+          and always runs on ubuntu-latest, because zizmor-action is a Docker container action.
+        required: false
+        default: ubuntu-latest
+        type: string
 
 # granted per job
 permissions: {}
@@ -59,7 +68,7 @@ jobs:
   # checkout (a job-level `if:` could not see the workspace), so the JSON is
   # assembled in this step. `actions` is always scanned when detecting.
   prep:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       # check out the repository
       contents: read
@@ -126,7 +135,7 @@ jobs:
   analyze:
     needs: prep
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       # upload analysis results to code scanning
       security-events: write
@@ -160,10 +169,11 @@ jobs:
         name: Setup mise (go)
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
+          # an exact version, and no sha256 input: the action then verifies the
+          # download for the runner's platform against the release's Sigstore-signed
+          # packslip (bound to mise's release workflow at this tag), a check a
+          # sha256 input would replace with a bare hash comparison
           version: v2026.11.7
-          # sha256 of the linux-x64 mise binary for the version above, from the release's
-          # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
-          sha256: 8f5426d9971eaf713b37509749174ca69cf2f08b8b25e389168dcfcab9cd1a4d
           install_args: go
 
       - name: Initialize CodeQL
@@ -189,6 +199,9 @@ jobs:
   zizmor:
     needs: prep
     if: needs.prep.outputs.zizmor == 'true'
+    # Always ubuntu-latest, whatever the runs-on input says: zizmor-action is a
+    # Docker container action, which macOS (and Windows) hosted runners cannot
+    # run, and it only reads workflow YAML, so the caller's platform is irrelevant.
     runs-on: ubuntu-latest
     permissions:
       # upload zizmor's SARIF to code scanning

@@ -63,6 +63,10 @@ harmless.
 Runs are serialised per repository (`renovate-<repo>`, queued, never cancelled), because parallel runs would race on
 branch pushes and automerge.
 
+The job runs on the `runs-on` input, `ubuntu-latest` by default. Renovate itself runs in a Docker container
+(`renovatebot/github-action`), and the cache hand-over uses `sudo chown`, so the runner must be **Linux with Docker**: a
+self-hosted runner such as an ARC scale set works, a macOS hosted runner does not.
+
 ### The merge model
 
 This is the org bot's model, unchanged. Commits go through the GitHub API, so they show as **Verified** and satisfy the
@@ -78,6 +82,7 @@ won't automerge (majors, `0.x`) get the `auto-merge` label and go through
   `RENOVATE_PRIVATE_KEY`. See [GitHub Apps & secrets](../setup/apps.md#renovate).
 - The repository **removed from the org-wide bot**: excluded in its `autodiscoverFilter`, or that loop retired. Two bots
   on one repository race on branches and automerge.
+- A **Linux runner with Docker** if you set `runs-on`. The default `ubuntu-latest` has it; macOS hosted runners don't.
 - A **public** config repository. The token is scoped to the caller, and it can read only public repositories beyond
   that.
 
@@ -110,6 +115,9 @@ flags every `workflow_run`. Here the trigger only starts a Renovate run, which n
 --8<-- "build/workflow-docs/renovate/actions.md"
 
 ## Troubleshooting
+
+`Run renovate` fails with `docker: command not found` (or a Docker daemon error) : `runs-on` names a runner without
+Docker, such as `macos-latest`. Use `ubuntu-latest` or a self-hosted Linux runner with Docker.
 
 Ticking a checkbox doesn't start a run : Check that the caller has the `issues` / `pull_request` `edited` triggers.
 Edits by bots and edits that don't change the body (title, labels) are ignored on purpose.

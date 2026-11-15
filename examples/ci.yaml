@@ -37,3 +37,4 @@ jobs:
     # with:
     #   e2e: true       # also run the `e2e` task job (off by default)
     #   coverage: false # skip the Codecov upload for repos that emit no coverage/test results
+    #   runs-on: macos-latest # run the tasks on macOS (e.g. a Swift package); default ubuntu-latest

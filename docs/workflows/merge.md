@@ -76,6 +76,8 @@ the `auto-merge` label, so a breaking-change PR merges as soon as a human approv
   `workflow_run.workflows` list.
 - Every required workflow listed in `workflow_run.workflows` **by its `name:`**. The last one to finish triggers the
   attempt, and ff-merge checks the full status rollup.
+- **Any Linux or macOS runner.** Every job runs on the `runs-on` input, `ubuntu-latest` by default. The jobs only call
+  the GitHub API, from JavaScript actions and bash steps. See [Platform](index.md#platform).
 
 A `/merge`-only repository can trigger on `issue_comment` alone and skip the review-ack companion.
 

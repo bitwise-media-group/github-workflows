@@ -13,8 +13,11 @@ one.
 
 - **Every action is pinned to a full commit SHA** with a version comment. This repository's zizmor config requires
   `hash-pin` for every `uses:`, and Renovate updates the SHA and comment together.
-- **mise itself is pinned and checksummed.** Each `jdx/mise-action` step gives an exact mise `version` and the `sha256`
-  of its linux-x64 binary.
+- **mise itself is pinned and signature-verified.** Each `jdx/mise-action` step gives an exact mise `version` and no
+  `sha256`, so the action verifies the download against the release's Sigstore-signed packslip, which must be signed by
+  mise's own release workflow at that tag. A missing packslip fails the step rather than falling back to a weaker check.
+  A `sha256` input is deliberately absent: the action treats it as a replacement for the signature check, not an
+  addition to it. Every `runs-on` platform gets the same check.
 - **Every tool is checksum-verified** against the repository's `mise.lock`, and provenance-verified where the tool
   publishes it.
 - **No cache in the signing job.** `release.yaml`'s `goreleaser` job installs mise with `cache: false`, so a cache

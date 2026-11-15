@@ -32,8 +32,8 @@ flowchart LR
 
 1. **`tasks`**: a four-way matrix over `lint`, `build`, `test` and `docs-build`. Each leg:
    - checks out the repository with submodules, which brings in the toolchain at `.mise/`;
-   - installs mise (a pinned version whose binary is sha256-verified) and every tool the repository pins, each
-     checksum-verified against `mise.lock` and cached by config hash;
+   - installs mise (a pinned version, verified against the release's Sigstore-signed packslip) and every tool the
+     repository pins, each checksum-verified against `mise.lock` and cached by config hash;
    - asks `mise tasks ls --name-only` whether the task exists and **skips** the leg if it doesn't, so there are no no-op
      stubs;
    - on the `build` leg of a repository with a root `Dockerfile` / `Dockerfile.*`, sets up QEMU and a `docker-container`
@@ -56,6 +56,11 @@ flowchart LR
 A repository with **no mise config at all** fails the task-detection step with an explicit error. There is no Makefile
 fallback.
 
+Every job runs on the `runs-on` input, `ubuntu-latest` by default. A repository whose tasks need macOS, such as a Swift
+package that links AVFoundation, passes `runs-on: macos-latest`. The single Setup mise step installs and verifies the
+mise binary for whatever platform the runner is, so the tasks and `e2e` jobs need nothing else. See
+[Platform](index.md#platform).
+
 ## Requirements
 
 - A **mise config** at the root: a `mise.toml`, or the toolchain submodule at `.mise/` loaded as `.mise/config.toml`.
@@ -66,6 +71,8 @@ fallback.
 - No `setup-go` / `setup-node` / `setup-uv`. Go, Node, Python, uv and every dev CLI come from the mise pins, and tasks
   install their own project dependencies (`bun install`, `npm ci`, `go mod download`, `uv sync`).
 - Codecov: the repository connected in Codecov, or `coverage: false`.
+- A **Linux runner** (the default) for a repository with a root `Dockerfile`: the QEMU and buildx setup on the `build`
+  leg only works there. Otherwise `runs-on` may be any platform `mise.lock` covers, such as `macos-latest` (arm64).
 
 ## Interface
 
@@ -99,6 +106,13 @@ submodule, check that it is committed. The checkout fetches submodules (`submodu
 
 `no 'build' task defined -- skipping` : Expected for a repository that doesn't define the task. Define it in `mise.toml`
 or include an archetype that does.
+
+A tool install fails on a non-default `runs-on` : `mise.lock` has no entry for the runner's platform, and `--locked`
+refuses to install without one. Add the platform to the lock (`mise lock --platform <platform>`), or use a runner it
+already covers. The shared toolchain's lock covers linux-x64, linux-arm64 and macos-arm64.
+
+`Setup QEMU` fails on a macOS runner : The repository has a root `Dockerfile`, and image builds need Linux. Use the
+default `runs-on`, or run the image build from a separate Linux caller job.
 
 `Verify dist/ is up to date` fails : Run `mise run build` locally and commit the regenerated `dist/`.
 

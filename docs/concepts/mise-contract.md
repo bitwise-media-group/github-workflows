@@ -49,7 +49,9 @@ The workflows check out submodules (`submodules: true`) wherever they run tasks,
 
 There is no `setup-go`, `setup-node` or `setup-uv` anywhere in the library. Each job that runs tasks:
 
-1. installs a **pinned mise binary** whose sha256 is checked by `jdx/mise-action`;
+1. installs a **pinned mise version**, which `jdx/mise-action` verifies against the release's Sigstore-signed packslip
+   for whatever platform the workflow's `runs-on` input names (`ubuntu-latest` by default). See
+   [Platform](../workflows/index.md#platform);
 2. installs the repository's tools, each **verified against `mise.lock`** (`--locked` is automatic). Lazy pins such as
    goreleaser, cosign, syft and uv install the first time a task uses them;
 3. caches them by config hash. The release-signing job is the exception and never uses a cache.

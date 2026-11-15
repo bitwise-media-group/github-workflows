@@ -41,6 +41,14 @@ flowchart TD
     gr -->|"success or skipped"| vt["vanity-tags<br/>move vX and vX.Y"]
 ```
 
+### Runner
+
+Every job runs on the `runs-on` input, `ubuntu-latest` by default. A repository whose `release` or `docs-build` task
+needs macOS (say, a docs demo rendered by a Swift CLI that links AVFoundation) passes `runs-on: macos-latest`. The
+`goreleaser` and `docs` jobs' single Setup mise step installs and verifies the mise binary for the runner's platform, so
+nothing else changes. Container images (a root `Dockerfile`) still need a Linux runner, and notarization doesn't need
+macOS at all. See [Platform](index.md#platform).
+
 ### `release-please`
 
 1. Checks out the repository so `hashFiles()` can detect `.goreleaser.yaml` / `.goreleaser.yml` and `zensical.toml`. A
@@ -62,23 +70,25 @@ Runs only when a release was cut, `.goreleaser.yaml` exists, and the trigger is 
 `schedule`. That trigger list is an allowlist: the job fails closed on any other event, such as a misconfigured
 `pull_request_target` caller.
 
-1. Checks out the **release tag** with full history and submodules.
-2. Installs mise **without any cache**. A cache poisoned from a less-trusted run must not feed signed, attested
+1. On a Linux runner, frees root-disk space by deleting the preinstalled SDKs (Android, .NET, GHC, CodeQL, PowerShell)
+   and pruning Docker images. The paths are the Ubuntu image's, so the step is skipped on macOS.
+2. Checks out the **release tag** with full history and submodules.
+3. Installs mise **without any cache**. A cache poisoned from a less-trusted run must not feed signed, attested
    artifacts. Go, goreleaser, cosign and syft all come from the repository's mise pins, so the release uses the same
    versions as a local `mise run release`.
-3. If a root `Dockerfile` / `Dockerfile.*` exists: sets up QEMU and buildx and logs in to `ghcr.io` for GoReleaser's
+4. If a root `Dockerfile` / `Dockerfile.*` exists: sets up QEMU and buildx and logs in to `ghcr.io` for GoReleaser's
    `dockers_v2`.
-4. If the config declares `homebrew_casks`: fails immediately without `app-client-id`, otherwise mints an App token
+5. If the config declares `homebrew_casks`: fails immediately without `app-client-id`, otherwise mints an App token
    scoped to **only** the tap repository (`contents` + `pull-requests` write).
-5. Fails if no `release` mise task exists. The go and swift archetypes define it as `goreleaser release --clean`.
-6. Runs **`mise run release --draft`** with `GITHUB_TOKEN`, `HOMEBREW_TAP_GITHUB_TOKEN` and the five `MACOS_*`
+6. Fails if no `release` mise task exists. The go and swift archetypes define it as `goreleaser release --clean`.
+7. Runs **`mise run release --draft`** with `GITHUB_TOKEN`, `HOMEBREW_TAP_GITHUB_TOKEN` and the five `MACOS_*`
    variables. `--draft` overrides the config, so nothing is public yet.
-7. **Attests** SLSA build provenance for every file in `dist/checksums.txt`, and for every image in `dist/digests.txt`
+8. **Attests** SLSA build provenance for every file in `dist/checksums.txt`, and for every image in `dist/digests.txt`
    when the repository builds images.
-8. **Publishes** the draft release, as the last step that can fail. Published releases are immutable, so everything that
+9. **Publishes** the draft release, as the last step that can fail. Published releases are immutable, so everything that
    can go wrong happens while the release is still a draft that can be deleted and re-run.
-9. **Merges the cask PR** in the tap (`bot/<repo>-<tag>`, squash) only now that the assets are public, so the tap never
-   points at draft assets that 404.
+10. **Merges the cask PR** in the tap (`bot/<repo>-<tag>`, squash) only now that the assets are public, so the tap never
+    points at draft assets that 404.
 
 ### `docs`
 
@@ -121,7 +131,7 @@ with no checkout.
   → GitHub Actions**. To publish on every push to `main`, also set the repository variable `ALWAYS_PUBLISH_DOCS` to
   `true` (**Settings → Secrets and variables → Actions → Variables**).
 - **Container images:** a root `Dockerfile` / `Dockerfile.*` and a `dockers_v2` block. Images go to `ghcr.io` with the
-  job's `packages: write`.
+  job's `packages: write`. QEMU and buildx need a **Linux runner**, so keep the default `runs-on`.
 - **Auto-merged release PRs:** pass `app-client-id` + `app-private-key` (the FF Merge App). A release PR pushed with the
   default `GITHUB_TOKEN` emits no `workflow_run` events, because GitHub suppresses them to prevent recursion.
   [`merge.yaml`](merge.md)'s auto-merge listens for `workflow_run`, so it would never fire and the PR would only land on
@@ -210,6 +220,9 @@ Docs publish on every push to `main` but should only follow releases : The repos
 
 `ALWAYS_PUBLISH_DOCS` is set but docs still only publish on release : The value must be exactly `true` (lower case), the
 caller must pass `always-publish-docs` (older copies of the example don't), and the push must be to the default branch.
+
+A tool install fails in `goreleaser` or `docs` on a non-default `runs-on` : `mise.lock` has no entry for the runner's
+platform, and `--locked` refuses to install without one. Add the platform to the lock, or use a runner it covers.
 
 Duplicate release PRs : Runs queue in the `release` concurrency group, and the two-pass design prevents the draft-tag
 race. A duplicate usually means the tag was deleted by hand after a release.

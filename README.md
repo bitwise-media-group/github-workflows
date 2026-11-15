@@ -28,6 +28,14 @@ action is pinned to a full commit SHA; the org Renovate bot
 | [`add-to-project.yaml`](#add-to-projectyaml)     | any      | adds newly opened issues to a shared org Projects v2 board via a "Project Sync" App token                                                                                    |
 | [`renovate.yaml`](#renovateyaml)                 | any      | per-repository Renovate run — the org bot's App, config and preset on this repo's own schedule, plus instant runs on a dashboard / PR checkbox tick                          |
 
+Every workflow takes a `runs-on` input (default `ubuntu-latest`) that sets the runner for its jobs. macOS hosted runners
+(`macos-latest`, arm64) work for every job except `renovate.yaml` and `security.yaml`'s `zizmor` job, which run Docker
+containers (`zizmor` always stays on `ubuntu-latest`; `renovate.yaml` needs a Linux runner with Docker, hosted or
+self-hosted). Each `jdx/mise-action` step pins the mise version and verifies the binary for the runner's platform
+against the release's Sigstore-signed packslip, and tools install from `mise.lock` (which the shared toolchain locks for
+linux-x64, linux-arm64 and macos-arm64), so a Swift or other macOS-only repo can run its `ci.yaml`, `security.yaml` and
+`release.yaml` tasks on macOS. Image builds (a root `Dockerfile`) still need Linux.
+
 Each workflow below lists its inputs, secrets, and the permission ceiling the **caller** must grant — a reusable
 workflow's jobs cannot exceed the permissions of the job that calls them. The snippet is the minimal caller; follow the
 link beneath it for the fully-commented version.
@@ -42,7 +50,8 @@ artifact fails the PR). An opt-in `e2e` job runs `mise run e2e`. A caller may ad
 `integration`) alongside the `ci` job.
 
 - **Inputs:** `e2e` (default `false`), `coverage` (default `true`; set `false` for repos that emit no coverage or test
-  results).
+  results), `runs-on` (default `ubuntu-latest`; `macos-latest` for a repo whose tasks need macOS, unless it builds
+  container images).
 - **Secrets:** none.
 - **Permissions (caller grants):** `contents: read`.
 
@@ -68,7 +77,10 @@ _Any repo._ CodeQL analysis whose language matrix is detected at the repo root: 
 `javascript-typescript` (build-free) when `package.json` exists.
 
 - **Inputs:** `config-file` (optional, default none; pass `./.github/codeql/codeql-config.yaml`, copy
-  [`examples/codeql-config.yaml`](examples/codeql-config.yaml), to exclude a bundled `dist/`).
+  [`examples/codeql-config.yaml`](examples/codeql-config.yaml), to exclude a bundled `dist/`), `languages` (optional;
+  overrides detection), `runs-on` (default `ubuntu-latest`; the `prep` and `analyze` jobs' runner, `macos-latest`
+  supported — the `zizmor` job ignores it and stays on `ubuntu-latest`, since zizmor-action is a Docker container
+  action).
 - **Secrets:** none.
 - **Permissions (caller grants):** `security-events: write`, `packages: read`, `actions: read`, `contents: read`.
 
@@ -110,7 +122,8 @@ for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
   branch, not only on release — the example caller reads it from the `ALWAYS_PUBLISH_DOCS` repository variable),
   `app-client-id` (optional; author the release as a GitHub App rather than `GITHUB_TOKEN` — `vars.FF_MERGE_CLIENT_ID`;
   required when `.goreleaser.yaml` publishes a Homebrew cask), `homebrew-tap` (default `homebrew-tap`; the tap
-  repository in the caller's org that the cask is pushed to).
+  repository in the caller's org that the cask is pushed to), `runs-on` (default `ubuntu-latest`; every job's runner —
+  `macos-latest` for a repo whose `release` or `docs-build` task needs macOS, unless it builds container images).
 - **Secrets:** `app-private-key` — optional; required only when `app-client-id` is set (`secrets.FF_MERGE_PRIVATE_KEY`).
   `macos-sign-p12`, `macos-sign-password`, `macos-notary-issuer-id`, `macos-notary-key-id`, `macos-notary-key` —
   optional; only read by a `.goreleaser.yaml` with a `notarize.macos` block (`secrets.MACOS_SIGN_P12` /
@@ -149,10 +162,10 @@ for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
   final step publishes the release only after every asset, the cask push, and the attestations have succeeded. With
   immutable releases a published release can never be amended, so a failure anywhere earlier leaves a draft to delete
   and re-run instead of a permanently half-shipped release.
-- **Runner disk space:** the GoReleaser job starts by deleting the hosted runner's preinstalled SDKs that no mise-driven
-  release uses (Android, .NET, GHC, CodeQL, PowerShell) and pruning its cached Docker images, so a cold-cache,
-  many-target build with multi-platform images fits on `/`. Swift is left in place for the swift archetype. The step
-  logs `df -h /` before and after.
+- **Runner disk space:** on a Linux runner, the GoReleaser job starts by deleting the hosted runner's preinstalled SDKs
+  that no mise-driven release uses (Android, .NET, GHC, CodeQL, PowerShell) and pruning its cached Docker images, so a
+  cold-cache, many-target build with multi-platform images fits on `/`. Swift is left in place for the swift archetype.
+  The step logs `df -h /` before and after, and is skipped on macOS.
 - **Publishing docs:** add a `zensical.toml` (plus `pyproject.toml` + `uv.lock`) at the repo root and set **Settings →
   Pages → Source → GitHub Actions**. On each release the `docs` job runs `mise run docs-build` and deploys `./site` to
   Pages. To publish on every push to `main` instead (building the pushed commit, or the release tag on a release run),
@@ -168,9 +181,9 @@ for freshness in [`ci.yaml`](#ciyaml) on every PR, not at release time.
 - **Signing and notarizing macOS binaries:** add a
   [`notarize.macos`](https://goreleaser.com/customization/sign/notarize/) block to `.goreleaser.yaml` and pass the five
   `macos-*` secrets. GoReleaser's embedded quill signs each darwin binary with the org's Developer ID certificate and
-  submits it to Apple's notary service from the Linux runner — no macOS runner, no Pro licence — so a downloaded binary
-  runs without a Gatekeeper prompt and the Homebrew cask needs no quarantine-stripping hook. One-time org setup and the
-  consumer-side config are in [macOS notarization: org setup](#macos-notarization-org-setup).
+  submits it to Apple's notary service from the default Linux runner — no macOS runner, no Pro licence — so a downloaded
+  binary runs without a Gatekeeper prompt and the Homebrew cask needs no quarantine-stripping hook. One-time org setup
+  and the consumer-side config are in [macOS notarization: org setup](#macos-notarization-org-setup).
 - **Permissions (caller grants):** `contents: write`, `issues: write`, `pull-requests: write`, `id-token: write`,
   `attestations: write`, `artifact-metadata: write`, `packages: write`, `pages: write`. Grant all eight even without a
   `.goreleaser.yaml` or `zensical.toml`: GitHub resolves a reusable workflow's permissions as the union of every job and
@@ -217,7 +230,7 @@ that requires PR review. See [org setup](#fast-forward-merge-org-setup).
 - **Inputs:** `app-client-id` (required; `vars.FF_MERGE_CLIENT_ID`), `merge-command` (default `/merge`), `arm-command`
   (default `/auto-merge`), `label` (default `auto-merge`), `require-approval` (default `true`), `maintainer-only`
   (default `true`), `squash-authors` (default `bitwise-renovate[bot]`; author logins whose PRs are squash-merged via the
-  API instead of fast-forwarded — see below).
+  API instead of fast-forwarded — see below), `runs-on` (default `ubuntu-latest`; any Linux or macOS runner).
 - **Renovate PRs (squash instead of fast-forward):** Renovate's shared preset arms the update types it does not
   automerge itself (majors, 0.x) with the `auto-merge` label, and `ff-merge` squash-merges PRs from the `squash-authors`
   logins rather than fast-forwarding: Renovate never rebases its branches onto the base (`rebaseWhen: conflicted`), so
@@ -276,7 +289,7 @@ fork and same-repo PRs merge identically on approval, and it is the **only** che
 does no privileged work and needs no secrets; `ff-merge` re-verifies approval, checks, label, and fast-forwardness
 before moving the ref. Add `Merge Review Ack` to your `merge.yaml` caller's `workflow_run` list.
 
-- **Inputs:** none.
+- **Inputs:** `runs-on` (default `ubuntu-latest`; any runner).
 - **Secrets:** none.
 - **Permissions (caller grants):** none.
 
@@ -297,7 +310,7 @@ Full example: [`examples/merge-review-ack.yaml`](examples/merge-review-ack.yaml)
 _Any repo._ Posts a one-time comment on newly opened PRs explaining the repo merges via `/merge`. Uses
 `pull_request_target` so the notice reaches fork PRs too.
 
-- **Inputs:** `pr-number` — required.
+- **Inputs:** `pr-number` — required; `runs-on` (default `ubuntu-latest`; any Linux or macOS runner).
 - **Secrets:** none.
 - **Permissions (caller grants):** `pull-requests: write`.
 
@@ -328,7 +341,7 @@ whose issue fires the caller — install it on **all repositories**. In this org
 
 - **Inputs:** `project-url` (required; `https://github.com/orgs/<org>/projects/<n>`), `app-client-id` (required;
   `vars.ADD_TO_PROJECT_CLIENT_ID`), `labeled` (optional; comma-separated labels to filter on), `label-operator`
-  (optional; `AND` / `OR` / `NOT`, default `OR`).
+  (optional; `AND` / `OR` / `NOT`, default `OR`), `runs-on` (default `ubuntu-latest`; any runner).
 - **Secrets:** `app-private-key` — required (`secrets.ADD_TO_PROJECT_PRIVATE_KEY`).
 - **Permissions (caller grants):** none — the App token does the privileged work, so the caller job sets
   `permissions: {}`.
@@ -377,7 +390,8 @@ public (it is).
 - **Inputs:** `app-client-id` (required; `vars.RENOVATE_CLIENT_ID`), `config-repository` (default
   `bitwise-media-group/renovate-config`), `config-ref` (default `main`), `config-file` (default
   `renovate-global.json5`), `dry-run` (default empty = live; `extract`, `lookup` or `full`), `log-level` (default
-  `info`).
+  `info`), `runs-on` (default `ubuntu-latest`; must be a Linux runner with Docker, e.g. a self-hosted ARC runner —
+  Renovate runs in a container, so macOS hosted runners don't work).
 - **Secrets:** `app-private-key` — required (`secrets.RENOVATE_PRIVATE_KEY`).
 - **Permissions (caller grants):** none — the App token does the privileged work, so the caller sets `permissions: {}`.
 - **Triggers (the caller owns it):** `schedule` (hourly backstop), `workflow_dispatch` (forwarding `dry-run` /
