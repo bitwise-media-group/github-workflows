@@ -94,6 +94,16 @@ on:
         required: false
         default: ubuntu-latest
         type: string
+      docker:
+        description: >-
+          Give Renovate's post-upgrade tasks the runner's Docker, for repos whose tasks build images (e.g. the
+          containers archetype's `mise run update-allowlists` after a Dockerfile FROM bump). Registers QEMU binfmt
+          handlers for multi-platform builds, mounts the Docker socket into the Renovate container, and bind-mounts the
+          runner's docker CLI and buildx plugin into it (the Renovate image ships neither). Grants the Renovate
+          container root-equivalent access to the runner's Docker daemon; leave off unless a task needs it.
+        required: false
+        default: false
+        type: boolean
     secrets:
       app-private-key:
         description: Private key of the org's Renovate GitHub App (secrets.RENOVATE_PRIVATE_KEY).
@@ -190,11 +200,33 @@ jobs:
           mkdir -p /tmp/renovate/cache/renovate/repository
           sudo chown -R 12021:0 /tmp/renovate/
 
+      # Opt-in Docker for post-upgrade tasks that build images. QEMU's binfmt handlers
+      # live in the runner's kernel, so builds reaching the host daemon through the
+      # mounted socket can run non-native RUN steps. The Renovate image has no docker
+      # CLI (and containerbase can't install one), so the runner's own CLI and buildx
+      # plugin are bind-mounted read-only onto the CLI's search path; /tmp:/tmp is
+      # re-listed because docker-volumes replaces the action's default.
+      - name: Setup QEMU
+        if: inputs.docker
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Locate the runner's docker CLI and buildx plugin
+        id: docker
+        if: inputs.docker
+        run: |
+          cli=$(readlink -f "$(command -v docker)")
+          buildx=$(readlink -f "$(docker info --format '{{range .ClientInfo.Plugins}}{{if eq .Name "buildx"}}{{.Path}}{{end}}{{end}}')")
+          [ -x "$cli" ] || { echo "::error::no docker CLI on the runner"; exit 1; }
+          [ -x "$buildx" ] || { echo "::error::no docker buildx plugin on the runner"; exit 1; }
+          echo "volumes=/tmp:/tmp;${cli}:/usr/local/bin/docker:ro;${buildx}:/usr/local/lib/docker/cli-plugins/docker-buildx:ro" >>"$GITHUB_OUTPUT"
+
       - name: Run renovate
         uses: renovatebot/github-action@266fef21329c44765ad42f9dea1f01f5d2d91084 # v46.3.13
         with:
           configurationFile: renovate-config/${{ inputs.config-file }}
           token: ${{ steps.app-token.outputs.token }}
+          mount-docker-socket: ${{ inputs.docker }}
+          docker-volumes: ${{ steps.docker.outputs.volumes || '/tmp:/tmp' }}
         env:
           # pin the run to this repository: env outranks the config file in Renovate's
           # precedence, so the file's `autodiscover: true` is overridden and the

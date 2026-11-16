@@ -53,10 +53,12 @@ harmless.
 2. Checks out the **config repository** (`config-repository@config-ref`) into `renovate-config/` and passes
    `config-file` to Renovate unchanged. A policy change there reaches every repository on its next run.
 3. Restores Renovate's **repository cache** and hands it to the container's uid `12021`.
-4. Runs [`renovatebot/github-action`](https://github.com/renovatebot/github-action) with `RENOVATE_AUTODISCOVER=false`
+4. With `docker: true` only, sets up QEMU and locates the runner's docker CLI and buildx plugin (see
+   [Docker for post-upgrade tasks](#docker-for-post-upgrade-tasks)).
+5. Runs [`renovatebot/github-action`](https://github.com/renovatebot/github-action) with `RENOVATE_AUTODISCOVER=false`
    and `RENOVATE_REPOSITORIES=<this repo>`. Environment variables override the config file, so the run is pinned to the
    caller.
-5. Returns the cache to the runner user and **saves it only on `schedule` / `workflow_dispatch` / `push`**. An `issues`
+6. Returns the cache to the runner user and **saves it only on `schedule` / `workflow_dispatch` / `push`**. An `issues`
    run gets a read-only cache token, `workflow_run` is left out for the same reason, and a `pull_request` run would save
    under the PR's ref, where later runs can't restore it.
 
@@ -66,6 +68,27 @@ branch pushes and automerge.
 The job runs on the `runs-on` input, `ubuntu-latest` by default. Renovate itself runs in a Docker container
 (`renovatebot/github-action`), and the cache hand-over uses `sudo chown`, so the runner must be **Linux with Docker**: a
 self-hosted runner such as an ARC scale set works, a macOS hosted runner does not.
+
+### Docker for post-upgrade tasks
+
+Some post-upgrade tasks build images. The org preset runs the containers archetype's `mise run update-allowlists` after
+a Dockerfile `FROM` bump, which rebuilds and rescans every image and regenerates `security/allowlists/`. That needs
+`docker buildx`, and Renovate runs in a container with no Docker. Set `docker: true` and the job:
+
+- registers QEMU binfmt handlers on the runner (`docker/setup-qemu-action`). They live in the runner's kernel, so
+  multi-platform builds run non-native `RUN` steps;
+- mounts the runner's Docker socket into the Renovate container (`mount-docker-socket`);
+- bind-mounts the runner's docker CLI and buildx plugin into it, read-only. The Renovate image ships neither, and
+  containerbase (`installTools`) can't install them.
+
+The task creates its own `docker-container` buildx builder inside the container, because a builder set up on the runner
+by `docker/setup-buildx-action` lives in the runner user's client config and isn't visible there.
+
+!!! warning
+
+    The Docker socket is root-equivalent on the runner. Set `docker: true` only when a post-upgrade task needs it.
+    The runner is ephemeral, and Renovate runs only allowlisted commands (`allowedCommands` in
+    `renovate-global.json5`), but every one of them then has the daemon.
 
 ### The merge model
 
@@ -83,6 +106,8 @@ won't automerge (majors, `0.x`) get the `auto-merge` label and go through
 - The repository **removed from the org-wide bot**: excluded in its `autodiscoverFilter`, or that loop retired. Two bots
   on one repository race on branches and automerge.
 - A **Linux runner with Docker** if you set `runs-on`. The default `ubuntu-latest` has it; macOS hosted runners don't.
+- With `docker: true`: a runner whose docker CLI has the **buildx** plugin (`ubuntu-latest` does), with
+  `/var/run/docker.sock` as its socket.
 - A **public** config repository. The token is scoped to the caller, and it can read only public repositories beyond
   that.
 
@@ -118,6 +143,12 @@ flags every `workflow_run`. Here the trigger only starts a Renovate run, which n
 
 `Run renovate` fails with `docker: command not found` (or a Docker daemon error) : `runs-on` names a runner without
 Docker, such as `macos-latest`. Use `ubuntu-latest` or a self-hosted Linux runner with Docker.
+
+A post-upgrade task fails with `spawn docker ENOENT` or `Cannot connect to the Docker daemon` : The task needs Docker.
+Set `docker: true` in the caller.
+
+`Locate the runner's docker CLI and buildx plugin` fails : The runner has no docker CLI or no buildx plugin. Use
+`ubuntu-latest`, or install `docker-buildx-plugin` on the self-hosted runner.
 
 Ticking a checkbox doesn't start a run : Check that the caller has the `issues` / `pull_request` `edited` triggers.
 Edits by bots and edits that don't change the body (title, labels) are ignored on purpose.

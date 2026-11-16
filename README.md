@@ -397,7 +397,9 @@ public (it is).
   `bitwise-media-group/renovate-config`), `config-ref` (default `main`), `config-file` (default
   `renovate-global.json5`), `dry-run` (default empty = live; `extract`, `lookup` or `full`), `log-level` (default
   `info`), `runs-on` (default `ubuntu-latest`; must be a Linux runner with Docker, e.g. a self-hosted ARC runner —
-  Renovate runs in a container, so macOS hosted runners don't work).
+  Renovate runs in a container, so macOS hosted runners don't work), `docker` (default `false`; registers QEMU and
+  mounts the runner's Docker socket, docker CLI and buildx plugin into the Renovate container, for post-upgrade tasks
+  that build images such as the containers archetype's `mise run update-allowlists`).
 - **Secrets:** `app-private-key` — required (`secrets.RENOVATE_PRIVATE_KEY`).
 - **Permissions (caller grants):** none — the App token does the privileged work, so the caller sets `permissions: {}`.
 - **Triggers (the caller owns it):** `schedule` (hourly backstop), `workflow_dispatch` (forwarding `dry-run` /
