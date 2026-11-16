@@ -1,5 +1,25 @@
 # Changelog
 
+## [8.4.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.3.0...v8.4.0) (2026-11-16)
+
+
+### Features
+
+* add a runs-on input to every reusable workflow ([c36b631](https://github.com/bitwise-media-group/github-workflows/commit/c36b63192e701d3898935fb3c11e626b2d3a7705))
+* **release:** run any toolchain's release task, not only GoReleaser ([2de6e90](https://github.com/bitwise-media-group/github-workflows/commit/2de6e902eb77a4ed61ef7de80490f679ca288cc7))
+* **renovate:** opt-in docker input for image-building post-upgrade tasks ([f08eea3](https://github.com/bitwise-media-group/github-workflows/commit/f08eea3749806e1179d05972bf20e74fa9ba9fb7))
+
+
+### Bug Fixes
+
+* **deps:** update dependency jdx/mise to v2026.11.5 ([#274](https://github.com/bitwise-media-group/github-workflows/issues/274)) ([f2823b1](https://github.com/bitwise-media-group/github-workflows/commit/f2823b1f5bd4434bec4e90eb21bc2a3503c5de43))
+* **deps:** update dependency jdx/mise to v2026.11.6 ([#279](https://github.com/bitwise-media-group/github-workflows/issues/279)) ([983ba6b](https://github.com/bitwise-media-group/github-workflows/commit/983ba6baf4f3393b8fca7ce97de1acde969258b0))
+* **deps:** update dependency jdx/mise to v2026.11.7 ([#281](https://github.com/bitwise-media-group/github-workflows/issues/281)) ([14451c8](https://github.com/bitwise-media-group/github-workflows/commit/14451c8789dad53e8575b450859c3ac40ef6d7d9))
+* **deps:** update jdx/mise-action action to v5.2.8 ([#283](https://github.com/bitwise-media-group/github-workflows/issues/283)) ([6b77149](https://github.com/bitwise-media-group/github-workflows/commit/6b77149d83cf7817c5d11b42323cabeee68f2aff))
+* **deps:** update renovatebot/github-action action to v46.3.13 ([#275](https://github.com/bitwise-media-group/github-workflows/issues/275)) ([d358ef9](https://github.com/bitwise-media-group/github-workflows/commit/d358ef9e28b92da6cdafa431ef2d3bcf241d87eb))
+* **patchy-publish:** verify mise against its signed packslip ([41babe5](https://github.com/bitwise-media-group/github-workflows/commit/41babe5241cec9a8f261a5a664b01718fc6b812c))
+* set up QEMU and buildx for multi-platform image builds in ci and patchy-publish ([60345f6](https://github.com/bitwise-media-group/github-workflows/commit/60345f6488e06e7d6a7ad3fe1efac0e88eb9ead5))
+
 ## [8.3.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.2.1...v8.3.0) (2026-11-11)
 
 
