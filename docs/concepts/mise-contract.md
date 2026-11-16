@@ -10,18 +10,19 @@ the language.
 
 ## The canonical tasks
 
-| Task         | Run by                      | Expected to                                                                                                                                |
-| ------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lint`       | `ci.yaml`                   | all check-mode static analysis: `prettier --check`, markdownlint, `go vet`, …                                                              |
-| `build`      | `ci.yaml`                   | compile, or rebuild `dist/`. A committed `dist/` must match afterwards                                                                     |
-| `test`       | `ci.yaml`                   | run tests, writing `coverage/cobertura-coverage.xml`, `coverage/lcov.info` or `coverage/coverage.out`, and optionally `coverage/junit.xml` |
-| `e2e`        | `ci.yaml` with `e2e: true`  | end-to-end tests                                                                                                                           |
-| `release`    | `release.yaml` (GoReleaser) | `goreleaser release --clean`. The workflow appends `--draft`. Must leave the tree clean                                                    |
-| `docs-build` | `release.yaml` (docs)       | render the Zensical site into `./site`                                                                                                     |
+| Task         | Run by                     | Expected to                                                                                                                                                                                                            |
+| ------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lint`       | `ci.yaml`                  | all check-mode static analysis: `prettier --check`, markdownlint, `go vet`, …                                                                                                                                          |
+| `build`      | `ci.yaml`                  | compile, or rebuild `dist/`. A committed `dist/` must match afterwards                                                                                                                                                 |
+| `test`       | `ci.yaml`                  | run tests, writing `coverage/cobertura-coverage.xml`, `coverage/lcov.info` or `coverage/coverage.out`, and optionally `coverage/junit.xml`                                                                             |
+| `e2e`        | `ci.yaml` with `e2e: true` | end-to-end tests                                                                                                                                                                                                       |
+| `release`    | `release.yaml` (publish)   | build and upload with any tool (go/swift: `goreleaser release --clean`). Receives `--draft`; fills the draft but must not publish the GitHub release. A registry push (npm, PyPI) goes last. Must leave the tree clean |
+| `docs-build` | `release.yaml` (docs)      | render the Zensical site into `./site`                                                                                                                                                                                 |
 
 Define only the tasks that do real work. `ci.yaml` runs `mise tasks ls --name-only` and skips the rest, so there are no
-no-op stubs. `release` and `docs-build` are different: a `.goreleaser.yaml` without `release`, or a `zensical.toml`
-without `docs-build`, is a broken contract and fails the job.
+no-op stubs. `release` and `docs-build` are different: a draft release or `.goreleaser.yaml` without `release`, or a
+`zensical.toml` without `docs-build`, is a broken contract and fails the job. A task that writes a sha256sum-format
+`dist/checksums.txt` gets a SLSA attestation for every file it lists.
 
 ## Where the config comes from
 
@@ -72,7 +73,7 @@ Several workflows choose a path based on which files exist at the repository roo
 | `go.mod` (root only)                        | `security.yaml` adds the `go` CodeQL leg                                |
 | `package.json`                              | `security.yaml` adds the `javascript-typescript` leg                    |
 | `zizmor.y{a,}ml` / `.github/zizmor.y{a,}ml` | `security.yaml` runs the `zizmor` job (when `actions` is scanned)       |
-| `.goreleaser.y{a,}ml`                       | `release.yaml` runs the `goreleaser` job                                |
+| draft release / `.goreleaser.y{a,}ml`       | `release.yaml` runs the `publish` job                                   |
 | `Dockerfile` / `Dockerfile.*`               | `release.yaml` sets up QEMU, buildx and ghcr, and attests image digests |
 | `zensical.toml`                             | `release.yaml` runs the `docs` job                                      |
 

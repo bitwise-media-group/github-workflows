@@ -11,8 +11,8 @@ permissions **when the run starts**, as the **union of every job's `permissions:
 doing so. Two things follow:
 
 - The caller must grant every scope that any job declares, including jobs that will be skipped. `release.yaml` is the
-  usual example: a repository with no `.goreleaser.yaml` must still grant `id-token`, `attestations`,
-  `artifact-metadata` and `packages`.
+  usual example: a repository that never cuts a draft release (so never runs the `publish` job) must still grant
+  `id-token`, `attestations`, `artifact-metadata` and `packages`.
 - Missing a scope doesn't fail a single job. It fails the **whole run at startup** (`startup_failure`), with no jobs
   created and no re-run button.
 

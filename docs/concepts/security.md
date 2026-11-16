@@ -20,8 +20,8 @@ one.
   addition to it. Every `runs-on` platform gets the same check.
 - **Every tool is checksum-verified** against the repository's `mise.lock`, and provenance-verified where the tool
   publishes it.
-- **No cache in the signing job.** `release.yaml`'s `goreleaser` job installs mise with `cache: false`, so a cache
-  written by a less-trusted run can't feed signed, attested artifacts.
+- **No cache in the signing job.** `release.yaml`'s `publish` job installs mise with `cache: false`, so a cache written
+  by a less-trusted run can't feed signed, attested artifacts.
 
 ## Credentials
 
@@ -33,7 +33,7 @@ one.
 
 ## Triggers and injection
 
-- **Trusted-trigger allowlist.** `release.yaml`'s `goreleaser`, `docs` and `vanity-tags` jobs run only for `push`,
+- **Trusted-trigger allowlist.** `release.yaml`'s `publish`, `docs` and `vanity-tags` jobs run only for `push`,
   `workflow_dispatch` or `schedule`. A reusable workflow can't see how its caller is triggered, so this fails closed if
   someone wires it to `pull_request_target`.
 - **No PR code in privileged contexts.** `merge.yaml` never checks out code. `merge-notice.yaml` uses
@@ -44,12 +44,14 @@ one.
 
 ## Releases
 
-- **Draft until everything is done.** GoReleaser fills a draft. Attestations, the cask push and every upload must
-  succeed before the release is published, because published releases are immutable.
+- **Draft until everything is done.** The `release` task (GoReleaser, or any other tool) fills a draft. Attestations,
+  the cask push and every upload must succeed before the release is published, because published releases are immutable.
+  A registry push (npm, PyPI) is immutable too, so the task does it last, via trusted publishing (OIDC, no stored
+  token).
 - **SLSA build provenance** for every file in `checksums.txt` and every published image digest. Verify with
   `gh attestation verify --owner bitwise-media-group <file>`.
 - **Keyless cosign** signatures through the job's OIDC identity (`id-token: write`). No signing key is stored anywhere.
-- **Floating tags move last.** `vanity-tags` runs only after `goreleaser` succeeded or was skipped.
+- **Floating tags move last.** `vanity-tags` runs only after `publish` succeeded or was skipped.
 
 ## Checking a change
 

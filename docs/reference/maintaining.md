@@ -25,7 +25,7 @@ so this repository always runs the current definition rather than a release:
 | ---------------------------- | ----------------------- | ----------------------------------------------------------------------------- |
 | `self-ci.yaml`               | `ci.yaml`               | `lint` and `build` (the docs site). There is no `test` task, so it's skipped  |
 | `self-security.yaml`         | `security.yaml`         | `languages: actions`, because the `package.json` is tooling only, plus zizmor |
-| `self-release.yaml`          | `release.yaml`          | no `.goreleaser.yaml`; the `docs` job publishes this site; `vanity-tags`      |
+| `self-release.yaml`          | `release.yaml`          | non-draft, no goreleaser; the `docs` job publishes this site; `vanity-tags`   |
 | `self-merge.yaml`            | `merge.yaml`            | `workflow_run` on CI, Security Analysis and Merge Review Ack                  |
 | `self-merge-review-ack.yaml` | `merge-review-ack.yaml` |                                                                               |
 | `self-merge-notice.yaml`     | `merge-notice.yaml`     |                                                                               |

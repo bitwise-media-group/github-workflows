@@ -10,16 +10,16 @@ only on `workflow_call`. The `self-*` files beside them are this repository's ow
 [dogfood](../reference/maintaining.md#dogfooding) the library. Every external action is pinned to a full commit SHA, and
 Renovate keeps those pins current.
 
-| Workflow                                       | What it does                                                                                                                              |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [`ci.yaml`](ci.md)                             | Runs the repo's `lint`, `build`, `test` and `docs-build` mise tasks as parallel jobs, verifies a committed `dist/`, uploads to Codecov    |
-| [`security.yaml`](security.md)                 | CodeQL over `actions`, plus `go` and `javascript-typescript` when detected; zizmor when the repo opts in                                  |
-| [`release.yaml`](release.md)                   | release-please, then GoReleaser (signed, notarized, attested) and/or a Zensical docs deploy (per release or per push), then floating tags |
-| [`merge.yaml`](merge.md)                       | Signature-preserving fast-forward merge: `/merge` now, or `/auto-merge` once approved and green                                           |
-| [`merge-review-ack.yaml`](merge-review-ack.md) | Companion to `merge.yaml` that turns an approving review into a merge attempt, fork PRs included                                          |
-| [`merge-notice.yaml`](merge-notice.md)         | Posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                       |
-| [`add-to-project.yaml`](add-to-project.md)     | Adds new issues to the org's Projects v2 Roadmap board with a GitHub App token                                                            |
-| [`renovate.yaml`](renovate.md)                 | Runs the org's Renovate bot against just this repo: on its schedule, checkbox ticks, and as soon as its PRs go green                      |
+| Workflow                                       | What it does                                                                                                                                                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`ci.yaml`](ci.md)                             | Runs the repo's `lint`, `build`, `test` and `docs-build` mise tasks as parallel jobs, verifies a committed `dist/`, uploads to Codecov                                                         |
+| [`security.yaml`](security.md)                 | CodeQL over `actions`, plus `go` and `javascript-typescript` when detected; zizmor when the repo opts in                                                                                       |
+| [`release.yaml`](release.md)                   | release-please, then the `release` task (GoReleaser, signed, notarized, attested, or any build + registry publish) and/or a Zensical docs deploy (per release or per push), then floating tags |
+| [`merge.yaml`](merge.md)                       | Signature-preserving fast-forward merge: `/merge` now, or `/auto-merge` once approved and green                                                                                                |
+| [`merge-review-ack.yaml`](merge-review-ack.md) | Companion to `merge.yaml` that turns an approving review into a merge attempt, fork PRs included                                                                                               |
+| [`merge-notice.yaml`](merge-notice.md)         | Posts a one-time "this repo merges via `/merge`" comment on new PRs                                                                                                                            |
+| [`add-to-project.yaml`](add-to-project.md)     | Adds new issues to the org's Projects v2 Roadmap board with a GitHub App token                                                                                                                 |
+| [`renovate.yaml`](renovate.md)                 | Runs the org's Renovate bot against just this repo: on its schedule, checkbox ticks, and as soon as its PRs go green                                                                           |
 
 ## At a glance
 

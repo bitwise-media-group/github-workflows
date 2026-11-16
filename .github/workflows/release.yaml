@@ -5,21 +5,29 @@
 # release PR current from the Conventional Commit history; when that PR merges it
 # cuts the GitHub release and vX.Y.Z tag. What happens next depends on the repo:
 #
-#   - A repo with a .goreleaser.yaml takes the `goreleaser` job: its `release`
-#     mise task (`mise run release --draft`, GoReleaser underneath) builds
-#     archives + checksums + SBOMs + keyless cosign signatures, Developer
-#     ID-signed + notarized darwin binaries (goreleaser `notarize.macos`, when the
-#     caller passes the `macos-*` secrets), an optional Homebrew cask, and a
-#     GitHub build-provenance attestation over checksums.txt (plus digests.txt
-#     when the repo publishes container images via docker_digest). GoReleaser
-#     fills the release-please draft but leaves it a draft; the job publishes it
-#     as its very last step, once every asset, the cask, and the attestations
-#     have landed. Releases are immutable once published, so anything that can
-#     fail must fail while the release is still a draft that can be retried.
+#   - A release that has a build step takes the `publish` job: the cut release
+#     is a draft (release-please `draft: true` -- "something fills this release
+#     before it is published") or the repo has a .goreleaser.yaml. The job runs
+#     the repo's `release` mise task as `mise run release --draft`, whatever
+#     tool that task drives: the go and swift toolchain archetypes run
+#     GoReleaser (archives + checksums + SBOMs + keyless cosign signatures,
+#     Developer ID-signed + notarized darwin binaries via goreleaser
+#     `notarize.macos` when the caller passes the `macos-*` secrets, an
+#     optional Homebrew cask, container images via dockers_v2); other
+#     archetypes may build with GoReleaser and then push to a package registry
+#     (npm, PyPI). The contract for every task: fill the draft, never publish
+#     it, and write a sha256sum-format dist/checksums.txt for the files that
+#     should get a GitHub build-provenance attestation (plus dist/digests.txt
+#     for container images). The job publishes the release as its very last
+#     step, once every asset, the cask, and the attestations have landed.
+#     Releases are immutable once published, so anything that can fail must
+#     fail while the release is still a draft that can be retried. Registry
+#     uploads (npm, PyPI) are immutable too, so a task that pushes to one does
+#     it LAST inside the task, after everything else that can fail.
 #   - A repo with a zensical.toml takes the `docs` job: its `docs-build` mise
 #     task rebuilds the Zensical site and the job publishes it to GitHub Pages.
-#     This is keyed off the same config-presence detection as the goreleaser
-#     path and is independent of it, so a repo can ship binaries AND publish docs from one
+#     This is keyed off config-presence detection and is independent of the
+#     publish path, so a repo can ship binaries AND publish docs from one
 #     release. By default the site is published only when a release is cut; a
 #     caller that sets always-publish-docs: true publishes it on every push to
 #     the default branch instead (the examples/ caller reads that from the
@@ -31,14 +39,14 @@
 #
 # A final vanity-tags job, when the caller sets vanity-tags: true, moves the
 # floating major and minor tags (v1 and v1.1) that consumers pin -- it needs the
-# goreleaser job, so on the Go path the tags advance only after that job has
-# published the release, and on every other path (goreleaser skipped) it runs
+# publish job, so on the publish path the tags advance only after that job has
+# published the release, and on every other path (publish skipped) it runs
 # straight after release-please.
 #
-# Detection is a single hashFiles output on the release-please job, because a
-# job-level `if:` runs before checkout and can't see the workspace. The two-pass
-# release-please + idempotent tag creation works for both draft (goreleaser) and
-# non-draft releases.
+# Detection lives in outputs of the release-please job (config hashes plus the
+# cut release's draft flag), because a job-level `if:` runs before checkout and
+# can't see the workspace. The two-pass release-please + idempotent tag
+# creation works for both draft (publish path) and non-draft releases.
 #
 # Callers can gate follow-on work (docs publish, deploys, notifications) on the
 # workflow_call outputs below: release_created is truthy only when this run cut a
@@ -47,8 +55,10 @@
 # announcement) that must not run on every push to main.
 #
 # The consuming repo provides release-please-config.json + .release-please-manifest.json.
-# Go repos add a .goreleaser.yaml (release-type: go, draft: true); Actions repos that
-# commit dist/ set vanity-tags: true so their @v1/@v1.1 consumers track each release.
+# Repos that ship build artifacts set draft: true in release-please-config.json and
+# have a `release` mise task (Go repos also add a .goreleaser.yaml, release-type: go);
+# Actions repos that commit dist/ set vanity-tags: true so their @v1/@v1.1 consumers
+# track each release.
 # Repos that publish docs add a zensical.toml plus pyproject.toml + uv.lock at the
 # repo root (the docs job runs `mise run docs-build`). Both jobs run mise tasks, so
 # a repo customises its release or docs build by overriding `release` /
@@ -90,7 +100,7 @@ on:
       homebrew-tap:
         description: >-
           Name of the Homebrew tap repository, in the caller's own organisation, that .goreleaser.yaml pushes its
-          cask to. When the config declares homebrew_casks, the goreleaser job mints a short-lived token from the App
+          cask to. When the config declares homebrew_casks, the publish job mints a short-lived token from the App
           named by app-client-id (required in that case) scoped to contents + pull-requests write on this one
           repository, so the App must be installed on it. Only used when .goreleaser.yaml publishes a cask.
         required: false
@@ -98,10 +108,10 @@ on:
         type: string
       runs-on:
         description: >-
-          Runner label for every job: release-please, goreleaser, docs and vanity-tags. Default ubuntu-latest.
+          Runner label for every job: release-please, publish, docs and vanity-tags. Default ubuntu-latest.
           Linux arm64 and macOS hosted runners (macos-latest, arm64) are supported wherever the repo's mise.lock has entries for the platform (the shared toolchain's covers
           linux-x64, linux-arm64 and macos-arm64); Intel macOS and Windows are not.
-          Container images (a root Dockerfile) need a Linux runner; the goreleaser job's disk clean-up runs on
+          Container images (a root Dockerfile) need a Linux runner; the publish job's disk clean-up runs on
           Linux only.
         required: false
         default: ubuntu-latest
@@ -180,7 +190,7 @@ on:
 
 # Granted per job below. Note for callers: GitHub validates a reusable workflow's
 # permissions as the union of every job and ignores `if:`, so a caller must grant
-# the goreleaser job's id-token/attestations/artifact-metadata/packages and the
+# the publish job's id-token/attestations/artifact-metadata/packages and the
 # docs job's pages:write even on the paths where those jobs are skipped -- see
 # examples/release.yaml.
 permissions: {}
@@ -207,11 +217,13 @@ jobs:
       major: ${{ steps.release-please.outputs.major }}
       minor: ${{ steps.release-please.outputs.minor }}
       patch: ${{ steps.release-please.outputs.patch }}
-      # internal: truthy hashes that pick the goreleaser/publish path and gate the docs job (not workflow_call outputs)
-      goreleaser: ${{ steps.detect.outputs.goreleaser }}
+      # internal (not workflow_call outputs): truthy flags that gate the publish
+      # and docs jobs. publish is the cut release's draft flag or, failing that,
+      # the .goreleaser.yaml hash (repos that predate the draft signal).
+      publish: ${{ steps.draft.outputs.draft || steps.detect.outputs.goreleaser }}
       zensical: ${{ steps.detect.outputs.zensical }}
     steps:
-      # checked out so the goreleaser detection below can read the workspace; a
+      # checked out so the config detection below can read the workspace; a
       # job-level `if:` on the downstream jobs runs before their checkout and
       # could not see it.
       - name: Checkout repository
@@ -242,8 +254,8 @@ jobs:
           permission-pull-requests: write
 
       # Each output is a config-file hash (empty when the file is absent), used
-      # downstream as a truthy flag: goreleaser picks the goreleaser vs publish job;
-      # zensical gates the docs job. hashFiles returns a fixed-format hash, never
+      # downstream as a truthy flag: goreleaser (with the draft flag below) gates
+      # the publish job; zensical gates the docs job. hashFiles returns a fixed-format hash, never
       # caller-controlled text, so interpolating it into the run script is injection-safe.
       - name: Detect goreleaser and zensical config
         id: detect
@@ -262,10 +274,11 @@ jobs:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           skip-github-pull-request: true
 
-      # Guarantee the tag exists at the released commit: a draft release (go,
-      # draft: true) has no tag yet and GoReleaser cannot version without one, so
-      # create it; a non-draft release already made it, so the create fails and the
-      # patch sets it to the same commit (a no-op). Idempotent either way.
+      # Guarantee the tag exists at the released commit: a draft release
+      # (draft: true) has no tag yet and the release task (GoReleaser, say) cannot
+      # version without one, so create it; a non-draft release already made it, so
+      # the create fails and the patch sets it to the same commit (a no-op).
+      # Idempotent either way.
       - name: Create release tag
         if: ${{ steps.release-please.outputs.release_created }}
         env:
@@ -277,6 +290,26 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$SHA" ||
           gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" -X PATCH -f sha="$SHA" -F force=true
 
+      # Is the release just cut a draft? release-please `draft: true` means
+      # "something fills this release before it is published", which is the
+      # signal for the publish job -- a `release` mise task alone is not, because
+      # the go archetype defines one in every Go repo, libraries included. The
+      # releases list is read rather than releases/tags/{tag}, because a draft
+      # does not resolve by tag; a just-cut release is near the top of it.
+      - name: Detect a draft release
+        id: draft
+        if: ${{ steps.release-please.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release-please.outputs.tag_name }}
+        run: |
+          set -eu
+          draft="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
+            --jq '[.[] | select(.tag_name == env.TAG) | .draft] | first // false')"
+          if [ "$draft" = "true" ]; then
+            echo "draft=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # Build the release PR only now that the tag exists. A draft release whose
       # tag ref is missing is invisible to release-please's latest-release lookup,
       # so computing the PR in the same pass that cuts a release treats every
@@ -287,7 +320,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           skip-github-release: true
 
-  goreleaser:
+  publish:
     needs: release-please
     # Only run the privileged, full-history checkout of a computed ref from a
     # trusted trigger. This workflow is reusable, so CodeQL can't see the caller's
@@ -297,19 +330,19 @@ jobs:
     # not a denylist of fork-triggerable events: a new event type GitHub may add
     # later fails closed (the job is skipped) until it is vetted and added here.
     if: >-
-      needs.release-please.outputs.release_created && needs.release-please.outputs.goreleaser &&
+      needs.release-please.outputs.release_created && needs.release-please.outputs.publish &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
     runs-on: ${{ inputs.runs-on }}
     permissions:
       # upload assets and publish the draft release (and move vanity tags)
       contents: write
-      # use id token for cosign keyless signing
+      # use id token for cosign keyless signing (and registry trusted publishing)
       id-token: write
       # write github provenance attestation
       attestations: write
       # create artifact storage record for github attestation
       artifact-metadata: write
-      # push container images (a repo with a dockers_v2 config) to ghcr
+      # push container images (a repo with a goreleaser dockers_v2 config) to ghcr
       packages: write
     steps:
       # Reclaim root-disk space before anything lands on it. A cold-cache build
@@ -348,12 +381,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
-          fetch-depth: 0 # GoReleaser needs full history + tags for the changelog
-          persist-credentials: false # GoReleaser publishes via the GITHUB_TOKEN env, not the persisted credential
+          fetch-depth: 0 # the release task (GoReleaser's changelog, say) may need full history + tags
+          persist-credentials: false # the release task uploads via the GITHUB_TOKEN env, not the persisted credential
           submodules: true # fetch the shared task library (bitwise-media-group/make), mounted at .mise/, whose mise pins and tasks drive the release below; a no-op where the config is a root mise.toml
 
-      # The whole release toolchain comes from the repo's mise pins -- the Go
-      # toolchain GoReleaser builds with, goreleaser itself, cosign for the
+      # The whole release toolchain comes from the repo's mise pins -- the
+      # language toolchain (Go, Swift, bun, uv, ...), goreleaser, cosign for the
       # keyless signing config, syft for the sboms config, and whatever else
       # the repo's `release` task calls -- so the release is built by exactly
       # the versions `mise run release` uses locally. A plain install fetches
@@ -438,19 +471,24 @@ jobs:
       # The release runs through the repo's `release` mise task (the go and
       # swift toolchain archetypes define it as `goreleaser release --clean`),
       # so a repo customises its release by overriding the task, not this
-      # workflow. A .goreleaser.yaml without the task is a broken contract, so
-      # fail before anything is built rather than skip the release.
+      # workflow. A draft release or a .goreleaser.yaml without the task is a
+      # broken contract, so fail before anything is built -- leaving the draft
+      # to retry -- rather than skip the release.
       - name: Detect the release task
         run: |
           if ! mise tasks ls --name-only | grep -qxF release; then
-            echo "::error::.goreleaser.yaml exists but no 'release' mise task is defined -- include a toolchain archetype that provides it (go, swift) or define one"
+            echo "::error::the release is a draft or .goreleaser.yaml exists, but no 'release' mise task is defined -- include a toolchain archetype that provides it, or define one"
             exit 1
           fi
 
-      # goreleaser is the mise-pinned binary (no goreleaser-action, no floating
-      # `latest`). --draft is appended to the task's goreleaser command and
-      # overrides release.draft in the caller's config: the release stays a
-      # draft until the publish step at the end of this job.
+      # Every tool the task runs is mise-pinned (no goreleaser-action, no
+      # floating `latest`). --draft is appended to the task's command; for
+      # GoReleaser it overrides release.draft in the caller's config. Whatever
+      # the tool, the task fills the draft and must not publish it: the release
+      # stays a draft until the publish step at the end of this job. A task that
+      # also pushes to a registry (npm, PyPI -- both immutable) does that last,
+      # after everything else inside the task that can fail; it authenticates
+      # with this job's OIDC token (id-token: write) via trusted publishing.
       - name: Create release (mise run release)
         run: mise run release --draft
         env:
@@ -471,12 +509,16 @@ jobs:
           MACOS_NOTARY_KEY_ID: ${{ secrets.macos-notary-key-id }}
           MACOS_NOTARY_KEY: ${{ secrets.macos-notary-key }}
 
-
       # Attest SLSA build provenance (the default mode when no predicate is given)
-      # for every file listed in checksums.txt (archives + SBOMs + signature
-      # bundles). Verify with:
+      # for every file listed in dist/checksums.txt (for GoReleaser: archives +
+      # SBOMs + signature bundles). Any release task opts in by writing a
+      # sha256sum-format dist/checksums.txt; one that writes none (a pure
+      # registry publish) skips this. A .goreleaser.yaml always produces it, so
+      # the step still runs there when the file is missing and fails loudly
+      # rather than shipping unattested binaries. Verify with:
       #   gh attestation verify --owner <org> <file>
       - name: Attest release artifacts
+        if: ${{ hashFiles('dist/checksums.txt') != '' || hashFiles('.goreleaser.yaml', '.goreleaser.yml') != '' }}
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-checksums: ./dist/checksums.txt
@@ -531,9 +573,9 @@ jobs:
           gh pr merge "$pr" --repo "$TAP" --squash
 
   # Build the Zensical documentation site and publish it to GitHub Pages -- the
-  # zensical.toml counterpart to the goreleaser path. It only needs release-please
-  # (not goreleaser), so on a repo that both ships binaries and publishes docs the
-  # two run in parallel; on a docs-only repo goreleaser is skipped and this runs
+  # zensical.toml counterpart to the publish path. It only needs release-please
+  # (not publish), so on a repo that both ships binaries and publishes docs the
+  # two run in parallel; on a docs-only repo publish is skipped and this runs
   # straight off release-please.
   #
   # By default it runs only when this run cut a release, and builds the release
@@ -549,7 +591,7 @@ jobs:
   # mise pins. The consuming repo must set Settings -> Pages -> Source -> GitHub
   # Actions for the deploy to land.
   #
-  # Same trusted-trigger allowlist as goreleaser: this checks out a computed ref and
+  # Same trusted-trigger allowlist as publish: this checks out a computed ref and
   # runs the repo's locked deps, so it is gated to vetted events and fails closed on
   # any other (defense in depth for a reusable workflow that cannot see its caller's
   # trigger).
@@ -631,23 +673,23 @@ jobs:
 
   # Move the floating major/minor tags (v1, v1.1) that consumers pin onto the new
   # release commit -- one implementation shared by both paths, ordered last. It
-  # needs goreleaser, so on the Go path the tags advance only after that job has
+  # needs publish, so on the publish path the tags advance only after that job has
   # published and attested the release (never pointing @v1 at a half-finished
-  # release); on every other path goreleaser is skipped and this runs straight
+  # release); on every other path publish is skipped and this runs straight
   # after release-please. The release was already cut by release-please and dist/
   # freshness is enforced in CI, so there is nothing to build or verify -- a pure
   # tag move via the API, no checkout or toolchain.
   #
-  # `!cancelled()` is required so a skipped goreleaser (the non-Go path) does not
-  # skip this job by dependency; the result guard then proceeds only when goreleaser
+  # `!cancelled()` is required so a skipped publish (no build step) does not
+  # skip this job by dependency; the result guard then proceeds only when publish
   # succeeded or was skipped, never when it failed -- so a failed release never
-  # advances the tags. Same trusted-trigger allowlist as goreleaser (fails closed on
+  # advances the tags. Same trusted-trigger allowlist as publish (fails closed on
   # any event type not vetted here).
   vanity-tags:
-    needs: [release-please, goreleaser]
+    needs: [release-please, publish]
     if: >-
       !cancelled() && inputs.vanity-tags && needs.release-please.outputs.release_created &&
-      (needs.goreleaser.result == 'success' || needs.goreleaser.result == 'skipped') &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped') &&
       contains(fromJSON('["push","workflow_dispatch","schedule"]'), github.event_name)
     runs-on: ${{ inputs.runs-on }}
     permissions:
