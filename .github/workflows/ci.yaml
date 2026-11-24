@@ -96,7 +96,7 @@ jobs:
           # download for the runner's platform against the release's Sigstore-signed
           # packslip (bound to mise's release workflow at this tag), a check a
           # sha256 input would replace with a bare hash comparison
-          version: v2026.11.11
+          version: v2026.11.12
 
       # A repo defines only the canonical tasks that do real work -- there are
       # no no-op stubs -- so ask mise for the task list and skip the tasks this
@@ -254,7 +254,7 @@ jobs:
           # download for the runner's platform against the release's Sigstore-signed
           # packslip (bound to mise's release workflow at this tag), a check a
           # sha256 input would replace with a bare hash comparison
-          version: v2026.11.11
+          version: v2026.11.12
 
       # No task-existence gate here: e2e is opt-in (`e2e: true` in the caller),
       # so a repo that opts in without defining the task should fail loudly.
