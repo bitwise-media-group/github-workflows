@@ -402,7 +402,7 @@ jobs:
           # download for the runner's platform against the release's Sigstore-signed
           # packslip (bound to mise's release workflow at this tag), a check a
           # sha256 input would replace with a bare hash comparison
-          version: v2026.11.10
+          version: v2026.11.11
           # no cache in the release-signing job (neither mise's tool cache nor a
           # Go build cache): a cache poisoned from a less-trusted context must
           # not feed the signed, attested artifacts
@@ -643,7 +643,7 @@ jobs:
           # download for the runner's platform against the release's Sigstore-signed
           # packslip (bound to mise's release workflow at this tag), a check a
           # sha256 input would replace with a bare hash comparison
-          version: v2026.11.10
+          version: v2026.11.11
 
       # A zensical.toml without the task is a broken contract (every toolchain
       # include provides docs-build), so fail rather than publish nothing.
