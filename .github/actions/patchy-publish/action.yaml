@@ -160,7 +160,7 @@ runs:
         # download for the runner's platform against the release's Sigstore-signed
         # packslip (bound to mise's release workflow at this tag), a check a
         # sha256 input would replace with a bare hash comparison
-        version: v2026.11.13
+        version: v2026.11.14
         cache: false
 
     - name: Resolve the version
