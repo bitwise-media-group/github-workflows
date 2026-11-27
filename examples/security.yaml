@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   analyze:
-    uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@0000000000000000000000000000000000000000 # v8.4.0 # x-release-please-version
+    uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@0000000000000000000000000000000000000000 # v8.5.0 # x-release-please-version
     # with:
     #   config-file: ./.github/codeql/codeql-config.yaml # a repo with a bundled dist/ should exclude it
     #   runs-on: macos-latest # build the go leg on macOS; zizmor stays on ubuntu-latest
