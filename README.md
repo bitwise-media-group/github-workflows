@@ -446,8 +446,10 @@ _Repos that publish `patchy build` artifacts._ A composite action, run from a jo
 after `release.yaml`: when no release is cut it publishes every entry as an immutable
 `<next version>-edge.<timestamp>.g<commit>` build, and when one is it adds `vX.Y.Z` to the newest edge build of that
 version, without rebuilding. Registries and signing (keyless as the repo's own workflow, or a KMS key) come from org
-variables, never the repository, and registry URLs are masked in the run. See
-[docs/actions/patchy-publish.md](docs/actions/patchy-publish.md) and `examples/release-patchy.yaml`.
+variables, never the repository, and registry URLs are masked in the run. A public repository can publish to ghcr
+instead (`github-registry`), and an edge build can first run the repository's own `prepare` command for build contexts
+compiled outside docker. See [docs/actions/patchy-publish.md](docs/actions/patchy-publish.md) and
+`examples/release-patchy.yaml`.
 
 ## Consumer contracts
 

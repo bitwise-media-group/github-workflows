@@ -28,6 +28,12 @@
 # workflow, https://github.com/<owner>/<repo>/.github/workflows/<file>@<ref>),
 # or KMS when signing-kms-key names a key (gcpkms:// or awskms://).
 #
+# github-registry adds the GitHub Container Registry beside (or instead of)
+# the clouds, for a public repository whose artifacts already live on ghcr:
+# its edge builds land next to its releases, under the same names. Edge mode
+# runs the prepare command first, for build contexts the repository has to
+# produce (binaries its Dockerfiles copy in).
+#
 # The caller checks out with submodules (the toolchain's mise config pins
 # patchy and cosign) and grants id-token: write.
 name: patchy-publish
@@ -76,6 +82,20 @@ inputs:
     description: AWS region of aws-registry.
     required: false
     default: ""
+  github-registry:
+    description: >-
+      GitHub Container Registry URL, ghcr.io/<owner>[/<path>] (e.g. ghcr.io/<owner>/<repo>); published as the registry
+      named github and logged in to with github-token, so the job needs packages: write. It is not masked: a public
+      repository's packages are public. Empty skips GitHub.
+    required: false
+    default: ""
+  prepare:
+    description: >-
+      edge: a command run before patchy build, for the build contexts the repository's Dockerfiles copy from (binaries
+      compiled outside docker). It sees VERSION, GIT_COMMIT, SOURCE_DATE_EPOCH and PATCHY_TIMESTAMP, the values the
+      tag templates expand, so what it stamps matches the tags. Empty runs nothing.
+    required: false
+    default: ""
   signing-kms-key:
     description: >-
       KMS key to sign with (gcpkms://… or awskms:///…). Empty signs keylessly as this job's workflow identity.
@@ -90,6 +110,11 @@ outputs:
   version:
     description: The version the run built (edge) or promoted.
     value: ${{ steps.version.outputs.version }}
+  timestamp:
+    description: >-
+      The build's PATCHY_TIMESTAMP (UTC yyyymmddhhmmss, from the commit's time), so a later step can name what this
+      run published: <version>-edge.<timestamp>.g<short commit>.
+    value: ${{ steps.version.outputs.timestamp }}
 
 runs:
   using: composite
@@ -101,19 +126,25 @@ runs:
         VERSION: ${{ inputs.version }}
         GOOGLE_REGISTRY: ${{ inputs.google-registry }}
         AWS_REGISTRY: ${{ inputs.aws-registry }}
+        GITHUB_REGISTRY: ${{ inputs.github-registry }}
       run: |
         case "$MODE" in
           edge) ;;
           promote) [ -n "$VERSION" ] || { echo "::error::patchy-publish: promote needs the released version"; exit 1; } ;;
           *) echo "::error::patchy-publish: mode must be edge or promote, not '$MODE'"; exit 1 ;;
         esac
-        if [ -z "$GOOGLE_REGISTRY$AWS_REGISTRY" ]; then
-          echo "::error::patchy-publish: no registry: set google-registry and/or aws-registry"
+        if [ -z "$GOOGLE_REGISTRY$AWS_REGISTRY$GITHUB_REGISTRY" ]; then
+          echo "::error::patchy-publish: no registry: set google-registry, aws-registry and/or github-registry"
           exit 1
         fi
-        # Registry URLs stay private: a public repository's logs are public,
-        # so mask them (and their project/account paths) in every later
-        # step's output. The job summary rewrites them instead (below).
+        case "$GITHUB_REGISTRY" in
+          "" | ghcr.io/*) ;;
+          *) echo "::error::patchy-publish: github-registry must be ghcr.io/<owner>[/<path>], not '$GITHUB_REGISTRY'"; exit 1 ;;
+        esac
+        # Cloud registry URLs stay private: a public repository's logs are
+        # public, so mask them (and their project/account paths) in every
+        # later step's output. The job summary rewrites them instead (below).
+        # ghcr is left alone: it names the repository's own public packages.
         for url in "$GOOGLE_REGISTRY" "$AWS_REGISTRY"; do
           [ -n "$url" ] || continue
           echo "::add-mask::$url"
@@ -156,7 +187,14 @@ runs:
             version="$major.$minor.$((patch + 1))"
           fi
         fi
-        echo "version=$version" >>"$GITHUB_OUTPUT"
+        # PATCHY_TIMESTAMP is the commit's time, as patchy derives it from
+        # SOURCE_DATE_EPOCH; resolved once here so the prepare command, the
+        # build and the caller's later steps all name the same build.
+        timestamp="$(date -u -d "@$(git log -1 --format=%ct)" +%Y%m%d%H%M%S)"
+        {
+          echo "version=$version"
+          echo "timestamp=$timestamp"
+        } >>"$GITHUB_OUTPUT"
         echo "patchy-publish: $MODE $version"
 
     - name: Authenticate to Google Cloud
@@ -177,6 +215,15 @@ runs:
       run: |
         # ~/.docker/config.json: the keychain patchy and cosign both read
         docker login "${REGISTRY%%/*}" --username oauth2accesstoken --password-stdin <<<"$ACCESS_TOKEN"
+
+    - name: Log in to GitHub Container Registry
+      if: inputs.github-registry != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # ~/.docker/config.json, as above; the token needs packages: write
+        docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin <<<"$GH_TOKEN"
 
     - name: Authenticate to AWS
       if: inputs.aws-registry != ''
@@ -202,6 +249,7 @@ runs:
       env:
         GOOGLE_REGISTRY: ${{ inputs.google-registry }}
         AWS_REGISTRY: ${{ inputs.aws-registry }}
+        GITHUB_REGISTRY: ${{ inputs.github-registry }}
         KMS_KEY: ${{ inputs.signing-kms-key }}
       run: |
         set -euo pipefail
@@ -213,6 +261,9 @@ runs:
           fi
           if [ -n "$AWS_REGISTRY" ]; then
             printf '  - name: aws\n    url: "%s"\n' "$AWS_REGISTRY"
+          fi
+          if [ -n "$GITHUB_REGISTRY" ]; then
+            printf '  - name: github\n    url: "%s"\n' "$GITHUB_REGISTRY"
           fi
           echo "signing:"
           if [ -n "$KMS_KEY" ]; then
@@ -241,12 +292,32 @@ runs:
       if: inputs.mode == 'edge' && hashFiles('Dockerfile', 'Dockerfile.*') != ''
       uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
+    # The repository's own step for what its Dockerfiles copy in, with the
+    # values the tag templates expand, so what it stamps (a binary's version)
+    # matches the tags the build publishes.
+    - name: Prepare the build contexts
+      if: inputs.mode == 'edge' && inputs.prepare != ''
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        PREPARE: ${{ inputs.prepare }}
+        VERSION: ${{ steps.version.outputs.version }}
+        PATCHY_TIMESTAMP: ${{ steps.version.outputs.timestamp }}
+        CHANNEL: edge
+      run: |
+        set -euo pipefail
+        GIT_COMMIT="$(git rev-parse HEAD)"
+        SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+        export GIT_COMMIT SOURCE_DATE_EPOCH
+        eval "$PREPARE"
+
     - name: Publish edge builds
       if: inputs.mode == 'edge'
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         VERSION: ${{ steps.version.outputs.version }}
+        PATCHY_TIMESTAMP: ${{ steps.version.outputs.timestamp }}
         CHANNEL: edge
         GOOGLE_REGISTRY: ${{ inputs.google-registry }}
         AWS_REGISTRY: ${{ inputs.aws-registry }}

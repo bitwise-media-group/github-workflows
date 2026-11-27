@@ -50,10 +50,27 @@ block. `patchy build --dry-run`, which CI runs through the toolchain's `build` t
 | `google-workload-identity-provider`, `google-service-account` | `vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER`, `vars.GOOGLE_MANIFEST_PUBLISHER_SA` | the Workload Identity Federation login                         |
 | `aws-registry`                                                | `vars.AWS_PLATFORM_REGISTRY`                                                  | the `aws` registry; empty skips AWS                            |
 | `aws-role`, `aws-region`                                      | `vars.AWS_MANIFEST_PUBLISHER_ROLE`, `vars.AWS_REGION`                         | the OIDC role login                                            |
+| `github-registry`                                             | `ghcr.io/${{ github.repository }}`                                            | the `github` registry; empty skips ghcr                        |
 | `signing-kms-key`                                             | `vars.SIGNING_KMS_KEY`                                                        | sign with `gcpkms://…` or `awskms:///…`; empty signs keylessly |
 
-Adding a cloud is a matter of setting its variables. The registry URLs never appear in the run: they are masked in the
-logs, and the job summary names each registry (`<google>`, `<aws>`) instead.
+Adding a cloud is a matter of setting its variables. The cloud registry URLs never appear in the run: they are masked in
+the logs, and the job summary names each registry (`<google>`, `<aws>`) instead.
+
+### Publishing to ghcr
+
+`github-registry` publishes to the GitHub Container Registry, for a public repository whose released artifacts already
+live there: its edge builds land beside its releases, under the same names, so a consumer switches channel with a
+version range alone. The action logs in with `github-token`, so the job needs `packages: write`. The URL is not masked,
+since it names the repository's own public packages.
+
+### Build contexts
+
+Some image entries copy in what the repository compiles outside docker, such as cross-compiled binaries. In edge mode,
+`prepare` runs a command before `patchy build` to produce them. It sees `VERSION`, `GIT_COMMIT`, `SOURCE_DATE_EPOCH` and
+`PATCHY_TIMESTAMP`, the values the tag templates expand, so a version it stamps into a binary matches the tag the image
+is published under. The `timestamp` output carries the same `PATCHY_TIMESTAMP` for later steps in the job, which can
+then name the build (`<version>-edge.<timestamp>.g<short commit>`), for example to publish a chart that points at the
+images.
 
 ### Restricting a KMS key to some repositories
 
