@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.5.1](https://github.com/bitwise-media-group/github-workflows/compare/v8.5.0...v8.5.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **deps:** update aws-actions/configure-aws-credentials action to v6.3.1 ([#311](https://github.com/bitwise-media-group/github-workflows/issues/311)) ([307517b](https://github.com/bitwise-media-group/github-workflows/commit/307517b74e57becff71e78929c25f525988bfcef))
+* **deps:** update github/codeql-action action to v4.39.5 ([#308](https://github.com/bitwise-media-group/github-workflows/issues/308)) ([5456344](https://github.com/bitwise-media-group/github-workflows/commit/5456344442057f2ba9b6d595552bde3026e92a1b))
+
 ## [8.5.0](https://github.com/bitwise-media-group/github-workflows/compare/v8.4.0...v8.5.0) (2026-11-27)
 
 
